@@ -343,14 +343,10 @@ export default function BeforeScreen({ leads: leadsDb, transactions: txDb, listi
           </div>
         </div>
 
-        {/* Right rail — icon-only, no labels (mirrors real Lofty) */}
+        {/* Right rail */}
         <div className="w-11 bg-white border-l border-ink-200 flex flex-col items-center py-3 gap-3 shrink-0">
           {[BellIcon, ChartBarIcon, GearIcon, MagnifyingGlassIcon, LightbulbIcon, QuestionIcon].map((Icon, i) => (
-            <button
-              key={i}
-              type="button"
-              className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-ink-100 text-ink-500 transition-colors"
-            >
+            <button key={i} type="button" className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-ink-100 text-ink-500 transition-colors">
               <Icon size={16} weight="regular" />
             </button>
           ))}

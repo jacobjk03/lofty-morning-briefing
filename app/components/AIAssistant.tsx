@@ -8,6 +8,7 @@ import {
   ClockCounterClockwiseIcon,
   MicrophoneIcon,
   MicrophoneSlashIcon,
+  ArrowRightIcon,
 } from '@phosphor-icons/react'
 import LoftyMark from './LoftyMark'
 import { useElevenLabsVoice } from '../hooks/useElevenLabsVoice'

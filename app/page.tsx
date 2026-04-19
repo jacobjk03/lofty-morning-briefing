@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 
 const BeforeScreen = dynamic(() => import('./components/BeforeScreen'), { ssr: false })
 const AfterScreen = dynamic(() => import('./components/AfterScreen'), { ssr: false })
+const AfterDashboard = dynamic(() => import('./components/AfterDashboard'), { ssr: false })
 const LeadDetail = dynamic(() => import('./components/LeadDetail'), { ssr: false })
 const AIAssistant = dynamic(() => import('./components/AIAssistant'), { ssr: false })
 const AIAgents = dynamic(() => import('./components/AIAgents'), { ssr: false })
@@ -15,7 +16,8 @@ const TransitionIntro = dynamic(() => import('./components/TransitionIntro'), { 
 type Screen = 'before' | 'after' | 'lead' | 'agents' | 'chat' | 'dashboard'
 
 const TABS: { id: Screen; label: string }[] = [
-  { id: 'before', label: 'Today' },
+  { id: 'before', label: 'Before' },
+  { id: 'dashboard', label: 'After' },
   { id: 'after', label: 'Lofty AI' },
   { id: 'lead', label: 'Lead detail' },
   { id: 'agents', label: 'AI Agents' },
@@ -126,15 +128,18 @@ export default function Home() {
           }
           @keyframes sparkleSpin {
             0%   { transform: rotate(0deg)   scale(1);    }
-            8%   { transform: rotate(360deg) scale(1.2);  }
-            16%  { transform: rotate(720deg) scale(1);    }
-            100% { transform: rotate(720deg) scale(1);    }
+            12%  { transform: rotate(360deg) scale(1.2);  }
+            24%  { transform: rotate(720deg) scale(1);    }
+            36%  { transform: rotate(720deg) scale(1);    }
+            48%  { transform: rotate(1080deg) scale(1.2); }
+            60%  { transform: rotate(1440deg) scale(1);   }
+            100% { transform: rotate(1440deg) scale(1);   }
           }
           @keyframes fadeInNav {
             from { opacity: 0; transform: translateY(-4px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          .navia-sparkle { display: inline-block; animation: sparkleSpin 4s ease-in-out infinite; color: #C4622D; line-height: 1; }
+          .navia-sparkle { display: inline-block; animation: sparkleSpin 2.5s ease-in-out infinite; color: #C4622D; line-height: 1; }
           .navia-word { animation: naviaGlow 2s ease-in-out infinite; text-decoration: none; }
           .navia-word:hover { text-decoration: underline; }
           .navia-wrapper { opacity: 0; animation: fadeInNav 0.8s ease-out 0.5s forwards; }
@@ -211,23 +216,12 @@ export default function Home() {
           />
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-300 flex flex-col bg-[#f3f4f8] ${
+          className={`absolute inset-0 transition-opacity duration-300 flex flex-col ${
             screen === 'dashboard' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
           }`}
         >
-          <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-ink-200 bg-white">
-            <button
-              type="button"
-              onClick={() => goTo('after')}
-              className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              ← Back to Morning Briefing
-            </button>
-            <span className="text-ink-300">|</span>
-            <span className="text-[12px] text-ink-500">My Dashboard</span>
-          </div>
           <div className="flex-1 min-h-0 overflow-hidden">
-            <BeforeScreen leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
+            <AfterDashboard onBack={() => goTo('after')} leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
           </div>
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'lead' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
