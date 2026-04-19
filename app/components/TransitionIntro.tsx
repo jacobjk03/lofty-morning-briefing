@@ -85,6 +85,29 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
         <span className="text-ink-400">→</span>
       </button>
 
+      {/* Paradox-stage clutter chips — pinned to top & bottom of the viewport
+          (NOT the stage content box) so they never overlap the headline. */}
+      {stage === 0 && (
+        <>
+          <div className="pointer-events-none absolute top-16 left-0 right-0 z-0 flex flex-wrap justify-center gap-2 px-6 opacity-35">
+            {['36 pages', '12 widgets', '8 alerts'].map((p) => (
+              <span key={p}
+                className="inline-flex items-center h-7 px-3 rounded-pill bg-white border border-ink-200 text-[10px] text-ink-400 font-medium">
+                {p}
+              </span>
+            ))}
+          </div>
+          <div className="pointer-events-none absolute bottom-24 left-0 right-0 z-0 flex flex-wrap justify-center gap-2 px-6 opacity-35">
+            {['Smart Plans', 'Hot Sheets', 'Pipelines'].map((p) => (
+              <span key={p}
+                className="inline-flex items-center h-7 px-3 rounded-pill bg-white border border-ink-200 text-[10px] text-ink-400 font-medium">
+                {p}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+
       <div className="relative z-10 max-w-3xl w-full px-8 text-center">
         <AnimatePresence mode="wait">
           {stage === 0 && (
@@ -95,26 +118,6 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
               exit={{ opacity: 0, y: -20, filter: 'blur(6px)' }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* Faint clutter glimpse — floated above + below the headline so the
-                  chips don't sit directly under the text. */}
-              <div className="pointer-events-none absolute inset-0 -z-10 flex flex-col justify-between items-center py-6 opacity-35">
-                <div className="flex flex-wrap justify-center gap-2 max-w-xl">
-                  {['36 pages', '12 widgets', '8 alerts'].map((p) => (
-                    <span key={p}
-                      className="inline-flex items-center h-7 px-3 rounded-pill bg-white border border-ink-200 text-[10px] text-ink-400 font-medium">
-                      {p}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex flex-wrap justify-center gap-2 max-w-xl">
-                  {['Smart Plans', 'Hot Sheets', 'Pipelines'].map((p) => (
-                    <span key={p}
-                      className="inline-flex items-center h-7 px-3 rounded-pill bg-white border border-ink-200 text-[10px] text-ink-400 font-medium">
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              </div>
               <div className="text-[10px] font-semibold tracking-wider2 uppercase text-ink-400 mb-5">
                 The paradox
               </div>
