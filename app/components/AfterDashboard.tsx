@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react'
 import {
   SparkleIcon, PhoneIcon, EnvelopeIcon, ChatCircleIcon,
   HouseIcon, WarningCircleIcon, CheckCircleIcon, ArrowLeftIcon,
-  GiftIcon, ArrowsClockwiseIcon, TrendUpIcon, FlameIcon,
+  ArrowsClockwiseIcon, FlameIcon,
   CalendarIcon, ClipboardTextIcon, CurrencyDollarIcon,
   PaperPlaneTiltIcon, PencilSimpleIcon, MapPinIcon,
   ArrowUpRightIcon, ChartBarIcon, XIcon, MicrophoneIcon,
@@ -85,22 +85,6 @@ const LISTINGS_DEFAULT = [
 const APPT_DEFAULT = [
   { contact: 'Martinez', address: '1842 Camelback', time: '2:00 PM', type: 'Showing' },
   { contact: 'Roberts', address: '650 Maple St', time: '4:30 PM', type: 'Walkthrough' },
-]
-const HOT_SHEETS = [
-  { name: 'Scottsdale 3bd+ Under $800K', updates: 14 },
-  { name: 'Phoenix New Construction', updates: 7 },
-  { name: 'Tempe Condos Under $400K', updates: 23 },
-  { name: 'Paradise Valley Luxury', updates: 3 },
-]
-const KEEP_IN_TOUCH = [
-  { initials: 'MK', name: 'Marcus King', note: '1-year home anniversary today', color: '#dbeafe' },
-  { initials: 'ER', name: 'Elena Rodriguez', note: 'Birthday tomorrow', color: '#fce7f3' },
-  { initials: 'TW', name: 'Tom Williams', note: 'Follow-up overdue 3 days', color: '#fef3c7' },
-]
-const OPPS = [
-  { tag: 'Price Drop', tagColor: '#2563eb', name: '102 Skyview Lane', note: 'Matches 4 buyer profiles in your CRM.' },
-  { tag: 'Expired', tagColor: '#943700', name: '44 Harbor Crest', note: 'Previously listed at $2.1M. Retake suggested.' },
-  { tag: 'Back to Site', tagColor: '#059669', name: 'David Kim — Tempe', note: 'Returned after 6-day absence.' },
 ]
 
 /* ─── Helpers ──────────────────────────────────────────────────── */
@@ -434,14 +418,20 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                 </p>
               </section>
 
-              {/* Onboarding banner — single step only */}
+              {/* Setup nudge — Copilot offers to finish what's left */}
               {!onboardingDismissed && (
                 <div className="relative overflow-hidden rounded-3xl p-5 text-white flex items-center gap-4" style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)' }}>
                   <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
                   <div className="flex-1">
-                    <p className="font-bold text-[13px] mb-0.5">Connect your dialer to unlock calling</p>
-                    <p className="text-[11px] text-white/70">Takes 2 minutes — call any lead directly from the dashboard.</p>
+                    <p className="font-bold text-[13px] mb-0.5 flex items-center gap-1.5">
+                      <SparkleIcon size={11} weight="fill" className="text-cyan-200" />
+                      Finish setup with Lofty Copilot · 2 items left
+                    </p>
+                    <p className="text-[11px] text-white/75">Connect your dialer + sync your calendar. I'll walk you through it in 30 seconds — no guesswork.</p>
                   </div>
+                  <button className="shrink-0 h-8 px-3 rounded-full bg-white text-blue-700 text-[11px] font-extrabold hover:brightness-110 transition-all">
+                    Let Copilot handle it
+                  </button>
                   <button onClick={() => setOnboardingDismissed(true)} className="shrink-0 p-1.5 bg-white/15 hover:bg-white/25 rounded-full transition-colors">
                     <XIcon size={14} weight="bold" />
                   </button>
@@ -489,27 +479,11 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                 </div>
               </section>
 
-              {/* Opportunities — horizontal scroll */}
-              <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[15px] font-extrabold text-gray-900" style={{ fontFamily: "'Noto Serif', serif" }}>Opportunities</h3>
-                  <ArrowUpRightIcon size={15} weight="bold" className="text-gray-400" />
-                </div>
-                <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-                  {OPPS.map(o => (
-                    <div key={o.name} className="min-w-[220px] bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex-shrink-0" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
-                      <p className="text-[9px] font-extrabold uppercase tracking-widest mb-2" style={{ color: o.tagColor }}>{o.tag}</p>
-                      <p className="font-bold text-[14px] text-gray-900 mb-1" style={{ fontFamily: "'Noto Serif', serif" }}>{o.name}</p>
-                      <p className="text-[11px] text-gray-400 leading-relaxed">{o.note}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
             </div>
 
             {/* RIGHT — sidebar */}
             <div className="space-y-5">
-              <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-gray-400">Ecosystem</p>
+              <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-gray-400">Your day at a glance</p>
 
               {/* Bento: Tasks + Appointments */}
               <div className="grid grid-cols-2 gap-3">
@@ -548,35 +522,6 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                 </div>
               </div>
 
-              {/* Keep In Touch */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-100" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <GiftIcon size={15} weight="regular" className="text-pink-500" />
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Keep In Touch</span>
-                </div>
-                <div className="space-y-3">
-                  {KEEP_IN_TOUCH.map(k => (
-                    <div key={k.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[12px] text-gray-600" style={{ background: k.color }}>
-                          {k.initials}
-                        </div>
-                        <div>
-                          <p className="text-[12px] font-bold text-gray-800">{k.name}</p>
-                          <p className="text-[10px] text-gray-400">{k.note}</p>
-                        </div>
-                      </div>
-                      <button className="p-1.5 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                        <PaperPlaneTiltIcon size={13} weight="regular" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 pt-3 border-t border-gray-100 text-[9.5px] font-bold text-blue-600 flex items-center gap-1">
-                  <SparkleIcon size={9} weight="fill" />AI drafted 11 messages
-                </div>
-              </div>
-
               {/* Listings */}
               <div className="bg-white rounded-3xl p-5 border border-gray-100" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
                 <div className="flex items-center gap-2 mb-4">
@@ -599,22 +544,6 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                 </div>
               </div>
 
-              {/* Hot Sheets */}
-              <div className="bg-white rounded-3xl overflow-hidden border border-gray-100" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
-                <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-                  <TrendUpIcon size={15} weight="bold" className="text-blue-600" />
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">Hot Sheets</span>
-                </div>
-                {HOT_SHEETS.map((hs, i) => (
-                  <div key={hs.name} className={`flex items-center justify-between px-5 py-3.5 ${i < HOT_SHEETS.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                    <span className="text-[12px] text-gray-700 font-medium truncate flex-1 mr-3">{hs.name}</span>
-                    <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 tabular-nums shrink-0">{hs.updates}</span>
-                  </div>
-                ))}
-                <div className="px-5 py-3 border-t border-gray-100 flex items-center gap-1.5 text-[9.5px] font-bold text-blue-600">
-                  <SparkleIcon size={9} weight="fill" />23 new Tempe listings since yesterday
-                </div>
-              </div>
             </div>
           </div>
         </div>
