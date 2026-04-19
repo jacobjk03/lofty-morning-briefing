@@ -144,7 +144,12 @@ lib/
 
 ## Team
 
-Built at GlobeHack 2026 by the ASU ACM team.
+Built at GlobeHack 2026 · ASU ACM × Global Career Network
+
+- Taljinder Singh
+- Sankritya Thakur
+- Jacob Kuriakose
+- Mohan Kummarigunta
 
 ---
 
