@@ -15,6 +15,7 @@ import Orb, { OrbState } from './Orb'
 import ActionCard from './ActionCard'
 import CaptionStrip from './CaptionStrip'
 import DraftModal from './DraftModal'
+import DetailSheet, { type DetailView } from './DetailSheet'
 import { useVoice } from '../hooks/useVoice'
 
 interface AfterScreenProps {
@@ -99,6 +100,7 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
   const [approved, setApproved] = useState<Record<string, boolean>>({})
   const [voiceOn, setVoiceOn] = useState(false)
   const [draftLeadId, setDraftLeadId] = useState<number | null>(null)
+  const [detailView, setDetailView] = useState<DetailView | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [askInput, setAskInput] = useState('')
   const fallbackTimer = useRef<NodeJS.Timeout | null>(null)
@@ -296,8 +298,8 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
                       c.id === 'scott'
                         ? onViewLead
                         : c.id === 'johnson'
-                          ? () => showToast('Johnson deal opened in transactions')
-                          : () => showToast('Bloom Smart Plan preview coming up')
+                          ? () => setDetailView('johnson')
+                          : () => setDetailView('bloom')
                     }
                   />
                 ))}
@@ -404,6 +406,17 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
             onSent={(name) => {
               markApproved('scott', `Message sent to ${name}`)
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Deal / Smart Plan detail sheet — Johnson & Bloom secondary flows */}
+      <AnimatePresence>
+        {detailView !== null && (
+          <DetailSheet
+            view={detailView}
+            onClose={() => setDetailView(null)}
+            onAction={(msg) => showToast(msg)}
           />
         )}
       </AnimatePresence>

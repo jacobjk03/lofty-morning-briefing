@@ -7,9 +7,15 @@ function fallbackDraft(lead: { name: string; activity: string[]; neighborhood?: 
 }
 
 export async function POST(req: Request) {
-  const { leadId } = await req.json()
+  let leadId: string | number | undefined
+  try {
+    const body = await req.json()
+    leadId = body?.leadId
+  } catch {
+    return Response.json({ error: 'Invalid request body' }, { status: 400 })
+  }
 
-  const lead = getLeadById(parseInt(leadId))
+  const lead = getLeadById(parseInt(String(leadId ?? '')))
 
   if (!lead) {
     return Response.json({ error: 'Lead not found' }, { status: 404 })

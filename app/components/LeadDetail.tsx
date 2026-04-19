@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeftIcon,
   HouseIcon,
@@ -17,6 +17,7 @@ import {
   CheckCircleIcon,
 } from '@phosphor-icons/react'
 import Toast from './Toast'
+import CallOverlay from './CallOverlay'
 import { useVoice } from '../hooks/useVoice'
 
 interface LeadDetailProps {
@@ -98,6 +99,10 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
   const [editMode, setEditMode] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'done'>('idle')
+  const [contacted, setContacted] = useState(false)
+  const [messageSent, setMessageSent] = useState(false)
+  const [showCall, setShowCall] = useState(false)
   const voice = useVoice()
 
   useEffect(() => {
@@ -140,9 +145,15 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
   }
 
   const sendDraft = () => {
-    setToast(`Message sent to ${leadName}`)
     setEditMode(false)
-    setTimeout(() => onBack(), 1400)
+    setMessageSent(true)
+    setContacted(true)
+  }
+
+  const newDraft = () => {
+    setMessageSent(false)
+    setDraft(`Hey ${firstName}! Just wanted to follow up — are you still looking at properties in ${neighborhood.split(',')[0]}? I have a few new ones that match your criteria. Let me know if you'd like to take a look!`)
+    setEditMode(false)
   }
 
   return (
@@ -203,30 +214,62 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
                   {neighborhood} · Active today
                 </p>
 
-                {/* Primary quick actions — always visible */}
+                {/* Primary quick actions */}
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {[
-                    { Icon: PhoneIcon,           label: 'Call',            msg: `Calling ${firstName}…`,             primary: true },
-                    { Icon: EnvelopeIcon,        label: 'Message',         msg: `Composing new message to ${firstName}…` },
-                    { Icon: ArrowsClockwiseIcon, label: 'Sync CRM',        msg: 'Syncing activity to Lofty CRM…' },
-                    { Icon: CheckCircleIcon,     label: 'Mark contacted',  msg: `${firstName} marked as contacted today.` },
-                  ].map(({ Icon, label, msg, primary }) => (
-                    <button
-                      key={label}
-                      onClick={() => setToast(msg)}
-                      className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-pill text-[12px] font-semibold tracking-tight transition-all active:scale-[0.98]
-                        ${primary
-                          ? 'text-white shadow-sm'
-                          : 'bg-white border border-ink-200 text-ink-700 hover:border-blue-400 hover:text-blue-700 shadow-sm'}`}
-                      style={primary ? {
-                        background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 16px -6px rgba(37,99,235,0.45)',
-                      } : undefined}
-                    >
-                      <Icon size={13} weight={primary ? 'fill' : 'regular'} />
-                      {label}
-                    </button>
-                  ))}
+                  {/* Call → opens CallOverlay */}
+                  <button
+                    onClick={() => setShowCall(true)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-pill text-[12px] font-semibold tracking-tight transition-all active:scale-[0.98] text-white shadow-sm"
+                    style={{
+                      background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 16px -6px rgba(37,99,235,0.45)',
+                    }}
+                  >
+                    <PhoneIcon size={13} weight="fill" />
+                    Call
+                  </button>
+
+                  {/* Sync CRM → animated sync sequence */}
+                  <button
+                    onClick={() => {
+                      if (syncState !== 'idle') return
+                      setSyncState('syncing')
+                      setToast('Syncing activity to Lofty CRM…')
+                      setTimeout(() => {
+                        setSyncState('done')
+                        setToast('Synced to Lofty CRM ✓')
+                        setTimeout(() => setSyncState('idle'), 3000)
+                      }, 1800)
+                    }}
+                    className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-pill text-[12px] font-semibold tracking-tight transition-all active:scale-[0.98] shadow-sm
+                      ${syncState === 'done'
+                        ? 'bg-emerald-50 border border-emerald-300 text-emerald-700'
+                        : 'bg-white border border-ink-200 text-ink-700 hover:border-blue-400 hover:text-blue-700'}`}
+                  >
+                    <ArrowsClockwiseIcon
+                      size={13}
+                      weight="regular"
+                      className={syncState === 'syncing' ? 'animate-spin' : ''}
+                    />
+                    {syncState === 'syncing' ? 'Syncing…' : syncState === 'done' ? 'Synced ✓' : 'Sync CRM'}
+                  </button>
+
+                  {/* Mark contacted → toggles confirmed state */}
+                  <button
+                    onClick={() => {
+                      if (!contacted) {
+                        setContacted(true)
+                        setToast(`${firstName} marked as contacted today.`)
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-pill text-[12px] font-semibold tracking-tight transition-all active:scale-[0.98] shadow-sm
+                      ${contacted
+                        ? 'bg-emerald-50 border border-emerald-300 text-emerald-700 cursor-default'
+                        : 'bg-white border border-ink-200 text-ink-700 hover:border-blue-400 hover:text-blue-700'}`}
+                  >
+                    <CheckCircleIcon size={13} weight={contacted ? 'fill' : 'regular'} />
+                    {contacted ? 'Contacted ✓' : 'Mark contacted'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -361,43 +404,76 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
                 </div>
 
                 {/* Draft box */}
-                <div
-                  className="rounded-xl p-5 flex-1 mb-5"
-                  style={{ background: '#f7f9fb', border: '1px solid rgba(195,198,215,0.3)' }}
-                >
-                  {editMode ? (
-                    <textarea
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      rows={5}
-                      autoFocus
-                      className="w-full text-[14px] text-ink-800 leading-[1.6] bg-transparent resize-none focus:outline-none"
-                    />
-                  ) : (
-                    <p className="text-[14px] text-ink-800 leading-[1.6]">{draft}</p>
-                  )}
-                </div>
+                {messageSent ? (
+                  <motion.div
+                    key="sent"
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="rounded-xl flex-1 mb-5 flex flex-col items-center justify-center gap-3 py-8"
+                    style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.25)' }}
+                  >
+                    <div
+                      className="w-12 h-12 rounded-pill flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 8px 20px -8px rgba(16,185,129,0.5)' }}
+                    >
+                      <PaperPlaneTiltIcon size={20} weight="fill" className="text-white" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[14px] font-semibold text-emerald-800">Message sent to {firstName}</p>
+                      <p className="text-[11.5px] text-emerald-600 mt-1">Delivered via SMS · logged to CRM timeline</p>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div
+                    className="rounded-xl p-5 flex-1 mb-5"
+                    style={{ background: '#f7f9fb', border: '1px solid rgba(195,198,215,0.3)' }}
+                  >
+                    {editMode ? (
+                      <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        rows={5}
+                        autoFocus
+                        className="w-full text-[14px] text-ink-800 leading-[1.6] bg-transparent resize-none focus:outline-none"
+                      />
+                    ) : (
+                      <p className="text-[14px] text-ink-800 leading-[1.6]">{draft}</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="space-y-2.5">
-                  <button
-                    onClick={sendDraft}
-                    className="w-full h-12 rounded-xl inline-flex items-center justify-center gap-2 text-white text-[13.5px] font-semibold tracking-tight transition-transform active:scale-[0.98]"
-                    style={{
-                      background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 12px 28px -10px rgba(37,99,235,0.55)',
-                    }}
-                  >
-                    <PaperPlaneTiltIcon size={14} weight="fill" />
-                    Send now
-                  </button>
-                  <button
-                    onClick={() => setEditMode(v => !v)}
-                    className="w-full h-11 rounded-xl inline-flex items-center justify-center gap-2 bg-ink-50 border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 hover:border-ink-300 transition-all"
-                  >
-                    <PencilSimpleIcon size={13} weight="regular" />
-                    {editMode ? 'Preview' : 'Edit message'}
-                  </button>
+                  {messageSent ? (
+                    <button
+                      onClick={newDraft}
+                      className="w-full h-12 rounded-xl inline-flex items-center justify-center gap-2 bg-ink-50 border border-ink-200 text-ink-800 text-[13px] font-semibold hover:bg-ink-100 hover:border-ink-300 transition-all"
+                    >
+                      <SparkleIcon size={14} weight="regular" className="text-blue-500" />
+                      Generate new draft
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={sendDraft}
+                        className="w-full h-12 rounded-xl inline-flex items-center justify-center gap-2 text-white text-[13.5px] font-semibold tracking-tight transition-transform active:scale-[0.98]"
+                        style={{
+                          background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 12px 28px -10px rgba(37,99,235,0.55)',
+                        }}
+                      >
+                        <PaperPlaneTiltIcon size={14} weight="fill" />
+                        Send now
+                      </button>
+                      <button
+                        onClick={() => setEditMode(v => !v)}
+                        className="w-full h-11 rounded-xl inline-flex items-center justify-center gap-2 bg-ink-50 border border-ink-200 text-ink-700 text-[12.5px] font-semibold hover:bg-ink-100 hover:border-ink-300 transition-all"
+                      >
+                        <PencilSimpleIcon size={13} weight="regular" />
+                        {editMode ? 'Preview' : 'Edit message'}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Footnote */}
@@ -476,6 +552,24 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
 
         </div>
       </div>
+
+      {/* Call overlay */}
+      <AnimatePresence>
+        {showCall && (
+          <CallOverlay
+            name={leadName}
+            initials={initials}
+            onEnd={(secs) => {
+              setShowCall(false)
+              setContacted(true)
+              const mins = Math.floor(secs / 60)
+              const s = secs % 60
+              const duration = mins > 0 ? `${mins}m ${s}s` : `${s}s`
+              setToast(`Call logged · ${duration} · CRM updated`)
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
