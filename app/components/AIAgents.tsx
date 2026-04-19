@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import LoftyMark from './LoftyMark'
 
 interface AIAgentsProps {
   onGoToBriefing: () => void
@@ -367,25 +368,51 @@ export default function AIAgents({ onGoToBriefing, onGoToChat }: AIAgentsProps) 
     <div className="h-full overflow-y-auto bg-[#f7f9fb]">
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
 
-        {/* Problem banner */}
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '16px 20px' }}>
-          <div className="flex items-start gap-3">
-            <span className="text-lg mt-0.5">⚠️</span>
-            <div className="flex-1">
-              <p className="font-bold text-red-800 text-[13.5px] mb-1">The Problem with AI Copilots Today</p>
-              <p className="text-red-700 text-[12.5px] leading-relaxed">
-                These 6 powerful agents live on their own page — siloed from your dashboard and morning workflow.
-                The AI never proactively tells you which agent to use or when. Agents have to remember to go find them. They exist, but they don't act.
+        {/* Paradox callout — editorial, calm, readable */}
+        <section
+          className="bg-white rounded-2xl overflow-hidden"
+          style={{ border: '1px solid rgba(15,23,42,0.07)', boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(180px,200px)_1fr_auto] gap-5 md:gap-6 items-center px-6 py-5">
+            {/* Left: paradox kicker + headline */}
+            <div className="flex flex-col items-start gap-2.5">
+              <span className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-pill bg-amber-50 border border-amber-200 text-[10.5px] font-semibold tracking-wider2 uppercase text-amber-700">
+                <span className="w-1.5 h-1.5 rounded-pill bg-amber-500" />
+                The paradox
+              </span>
+              <p className="font-headline font-bold italic text-[19px] tracking-tightest text-gray-900 leading-[1.15]">
+                Six agents.<br />Zero orchestration.
               </p>
-              <div className="flex items-center gap-3 mt-3">
-                <p className="text-red-600 text-[12px] font-semibold">↓ Morning Briefing fixes this — the AI orchestrates all these agents for you</p>
-                <button onClick={onGoToBriefing} className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold text-white hover:bg-blue-700 transition-colors" style={{ background: '#2563EB' }}>
-                  See Morning Briefing →
-                </button>
+            </div>
+
+            {/* Middle: the argument */}
+            <div className="md:pl-6 md:border-l md:border-gray-100">
+              <p className="text-[14px] text-gray-700 leading-[1.6]">
+                These agents live on their own page — siloed from your dashboard and morning workflow.
+                The old Copilot never tells you which agent to run, or when. Agents exist, but they wait.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <LoftyMark size={12} />
+                <p className="text-[12.5px] text-blue-700 font-semibold">
+                  The Morning Briefing fixes this — Lofty Copilot runs these agents for you.
+                </p>
               </div>
             </div>
+
+            {/* Right: CTA */}
+            <button
+              onClick={onGoToBriefing}
+              className="shrink-0 inline-flex items-center gap-1.5 h-10 px-4 rounded-pill text-[12.5px] font-semibold tracking-tight text-white transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 20px -8px rgba(37,99,235,0.5)',
+              }}
+            >
+              See Morning Briefing
+              <span className="text-white/80">→</span>
+            </button>
           </div>
-        </div>
+        </section>
 
         {/* Hero card */}
         <div className="relative overflow-hidden rounded-xl p-8 text-white" style={{ background: 'linear-gradient(135deg, #131b2e 0%, #1e3a8a 100%)' }}>

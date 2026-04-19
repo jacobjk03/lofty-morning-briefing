@@ -35,6 +35,7 @@ export default function CallOverlay(props: CallOverlayProps) {
   return (
     <ConversationProvider
       onMessage={(msg: { source: string; message: string }) => {
+        console.log('[CallOverlay] onMessage:', msg.source, JSON.stringify(msg.message).slice(0, 120))
         if (msg.message?.trim()) {
           transcriptRef.current.push({
             speaker: msg.source === 'ai' ? 'agent' : 'user',
@@ -42,6 +43,15 @@ export default function CallOverlay(props: CallOverlayProps) {
             time: elapsedRef.current,
           })
         }
+      }}
+      onError={(message: string, context?: unknown) => {
+        console.error('[CallOverlay] ElevenLabs onError:', message, context)
+      }}
+      onConnect={({ conversationId }: { conversationId: string }) => {
+        console.log('[CallOverlay] Connected. conversationId=', conversationId)
+      }}
+      onDisconnect={(details: unknown) => {
+        console.warn('[CallOverlay] Disconnected:', details)
       }}
     >
       <CallOverlayInner {...props} transcriptRef={transcriptRef} elapsedRef={elapsedRef} />
@@ -74,6 +84,13 @@ function CallOverlayInner({ name, phone = '+1 (602) 555-0142', initials, leadId,
   const [keypadOpen, setKeypadOpen] = useState(false)
   const [keypadInput, setKeypadInput] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [pointer, setPointer] = useState<string>('')
+  const briefingRef = useRef<{
+    firstMessage?: string
+    systemPrompt?: string
+    dynamicVariables?: Record<string, string>
+    pointer?: string
+  }>({})
 
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const endingRef = useRef(false)
@@ -105,6 +122,28 @@ function CallOverlayInner({ name, phone = '+1 (602) 555-0142', initials, leadId,
     }
   }, [speakerOn, conversation])
 
+  // ── Pre-fetch Lofty briefing while phone is ringing ─────────────────────
+  useEffect(() => {
+    if (!leadId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/lead-pointer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leadId }),
+        })
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        briefingRef.current = data
+        if (data.pointer) setPointer(data.pointer)
+      } catch (e) {
+        console.warn('[CallOverlay] Failed to fetch lead pointer:', e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [leadId])
+
   // ── Answer button — THIS is the user gesture that unlocks audio ──────────
   const handleAnswer = useCallback(async () => {
     const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID
@@ -114,16 +153,32 @@ function CallOverlayInner({ name, phone = '+1 (602) 555-0142', initials, leadId,
       return
     }
     setPhase('connecting')
+    const briefing = briefingRef.current
+
     try {
-      // startSession called directly from a click handler = browser allows audio
-      await conversation.startSession({ agentId })
+      await conversation.startSession({
+        agentId,
+        connectionType: 'websocket',
+        ...(briefing.dynamicVariables ? { dynamicVariables: briefing.dynamicVariables } : {}),
+        ...(briefing.systemPrompt || briefing.firstMessage
+          ? {
+              overrides: {
+                agent: {
+                  ...(briefing.systemPrompt ? { prompt: { prompt: briefing.systemPrompt } } : {}),
+                  ...(briefing.firstMessage ? { firstMessage: briefing.firstMessage } : {}),
+                },
+              },
+            }
+          : {}),
+      })
       setPhase('connected')
     } catch (err) {
-      console.error('[CallOverlay] startSession error:', err)
-      setErrorMsg('Live AI unavailable — demo mode')
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('[CallOverlay] startSession error:', msg, err)
+      setErrorMsg(`Live AI error: ${msg.slice(0, 80)}`)
       setPhase('connected')
     }
-  }, [conversation])
+  }, [conversation, leadId])
 
   // ── End call ─────────────────────────────────────────────────────────────
   const handleEnd = useCallback(async () => {
@@ -235,6 +290,25 @@ function CallOverlayInner({ name, phone = '+1 (602) 555-0142', initials, leadId,
         {/* Name + number */}
         <h2 className="text-white font-semibold text-[22px] tracking-tighter mb-1">{name}</h2>
         <p className="text-white/40 text-[13px] font-medium mb-2">{phone}</p>
+
+        {/* Lofty pointer — the one-liner brief Scott was handed before the call */}
+        <AnimatePresence>
+          {pointer && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              className="mx-6 mb-3 px-3 py-2 rounded-2xl border border-blue-400/20 bg-blue-500/10"
+            >
+              <p className="text-[9.5px] font-bold tracking-widest uppercase text-blue-300/80 mb-1">
+                Lofty pointer
+              </p>
+              <p className="text-[12px] leading-snug text-white/80 font-medium">
+                {pointer}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Speaking / listening indicator */}
         <AnimatePresence mode="wait">

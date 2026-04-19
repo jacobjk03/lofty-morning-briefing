@@ -21,28 +21,54 @@ const AFTER_POINTS = [
   'Zero searching',
 ]
 
+const STAGES = 4 as const
+
 /**
- * Plays once on first load. localStorage-gated.
- * Beat 1: before points fade in (2.2s)
- * Beat 2: tagline (1.6s)
- * Beat 3: after points resolve + CTA (1.4s, then auto-dismiss)
+ * Four-beat story:
+ *   0. Acknowledge Lofty is powerful → pivot to the pain
+ *   1. "Too many places to look first" with chip list
+ *   2. "What if Lofty was simpler than a conversation?" with LoftyMark
+ *   3. "One briefing. Three moves. Zero searching."
+ *
+ * Plays on first load (localStorage-gated via parent) and every time the
+ * user crosses Before → After. Skippable at any time.
  */
 export default function TransitionIntro({ onDone }: TransitionIntroProps) {
-  const [stage, setStage] = useState<0 | 1 | 2>(0)
+  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0)
 
+  const advance = () => {
+    if (stage < STAGES - 1) setStage((s) => (s + 1) as 0 | 1 | 2 | 3)
+    else onDone()
+  }
+
+  // Keyboard control: arrow keys / space / enter advance, Esc skips.
   useEffect(() => {
-    const t1 = setTimeout(() => setStage(1), 2200)
-    const t2 = setTimeout(() => setStage(2), 3800)
-    const t3 = setTimeout(() => onDone(), 5600)
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
-  }, [onDone])
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        advance()
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setStage((s) => Math.max(0, s - 1) as 0 | 1 | 2 | 3)
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        onDone()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage])
+
+  const isLast = stage === STAGES - 1
 
   return (
     <motion.div
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#f7f9fb] overflow-hidden"
+      onClick={advance}
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#f7f9fb] overflow-hidden cursor-pointer select-none"
     >
       {/* Ambient */}
       <div className="pointer-events-none absolute -top-40 -right-40 w-[600px] h-[600px] rounded-pill"
@@ -50,18 +76,58 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
       <div className="pointer-events-none absolute -bottom-40 -left-40 w-[520px] h-[520px] rounded-pill"
            style={{ background: '#67E8F9', filter: 'blur(140px)', opacity: 0.10 }} />
 
-      {/* Skip — prominent pill so it never traps the viewer */}
+      {/* Skip */}
       <button
-        onClick={onDone}
-        className="absolute top-5 right-6 inline-flex items-center gap-1.5 h-8 px-3.5 rounded-pill bg-white/90 backdrop-blur border border-ink-200 text-[11px] text-ink-700 font-semibold hover:text-ink-900 hover:border-ink-300 transition-all shadow-sm"
+        onClick={(e) => { e.stopPropagation(); onDone() }}
+        className="absolute top-5 right-6 inline-flex items-center gap-1.5 h-8 px-3.5 rounded-pill bg-white/90 backdrop-blur border border-ink-200 text-[11px] text-ink-700 font-semibold hover:text-ink-900 hover:border-ink-300 transition-all shadow-sm z-20"
       >
         Skip intro
         <span className="text-ink-400">→</span>
       </button>
 
-      <div className="relative z-10 max-w-2xl w-full px-8 text-center">
+      <div className="relative z-10 max-w-3xl w-full px-8 text-center">
         <AnimatePresence mode="wait">
           {stage === 0 && (
+            <motion.div
+              key="acknowledge"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20, filter: 'blur(6px)' }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* Faint clutter glimpse — floated above + below the headline so the
+                  chips don't sit directly under the text. */}
+              <div className="pointer-events-none absolute inset-0 -z-10 flex flex-col justify-between items-center py-6 opacity-35">
+                <div className="flex flex-wrap justify-center gap-2 max-w-xl">
+                  {['36 pages', '12 widgets', '8 alerts'].map((p) => (
+                    <span key={p}
+                      className="inline-flex items-center h-7 px-3 rounded-pill bg-white border border-ink-200 text-[10px] text-ink-400 font-medium">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap justify-center gap-2 max-w-xl">
+                  {['Smart Plans', 'Hot Sheets', 'Pipelines'].map((p) => (
+                    <span key={p}
+                      className="inline-flex items-center h-7 px-3 rounded-pill bg-white border border-ink-200 text-[10px] text-ink-400 font-medium">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="text-[10px] font-semibold tracking-wider2 uppercase text-ink-400 mb-5">
+                The paradox
+              </div>
+              <h1 className="font-headline font-bold italic text-[38px] md:text-[52px] tracking-tightest text-ink-900 leading-[1.02]">
+                Lofty has every feature<br />a real estate agent could want.
+              </h1>
+              <p className="mt-6 text-[18px] md:text-[20px] text-ink-500 font-medium max-w-xl mx-auto">
+                So why does Monday morning still start with <span className="text-ink-900 italic">"where do I even begin?"</span>
+              </p>
+            </motion.div>
+          )}
+
+          {stage === 1 && (
             <motion.div
               key="before"
               initial={{ opacity: 0, y: 12 }}
@@ -91,7 +157,7 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
             </motion.div>
           )}
 
-          {stage === 1 && (
+          {stage === 2 && (
             <motion.div
               key="tagline"
               initial={{ opacity: 0, y: 12, filter: 'blur(8px)' }}
@@ -107,7 +173,7 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
             </motion.div>
           )}
 
-          {stage === 2 && (
+          {stage === 3 && (
             <motion.div
               key="after"
               initial={{ opacity: 0, y: 12 }}
@@ -143,18 +209,39 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
         </AnimatePresence>
       </div>
 
-      {/* Progress dots */}
-      <div className="absolute bottom-10 flex gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="h-1 rounded-pill transition-all duration-500"
+      {/* Bottom controls — progress dots + tap-to-continue hint + next button */}
+      <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4 z-10">
+        <div className="flex gap-1.5">
+          {Array.from({ length: STAGES }).map((_, i) => (
+            <button
+              key={i}
+              onClick={(e) => { e.stopPropagation(); setStage(i as 0 | 1 | 2 | 3) }}
+              className="h-1.5 rounded-pill transition-all duration-500 cursor-pointer"
+              style={{
+                width: stage === i ? 28 : 6,
+                background: stage >= i ? '#2563EB' : '#CBD5E1',
+              }}
+              aria-label={`Go to beat ${i + 1}`}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-ink-400 font-medium tracking-tight">
+            Tap anywhere or press → to continue
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); advance() }}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-pill text-[12px] font-semibold tracking-tight text-white transition-all active:scale-[0.97] hover:brightness-110"
             style={{
-              width: stage === i ? 24 : 6,
-              background: stage >= i ? '#2563EB' : '#CBD5E1',
+              background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 20px -8px rgba(37,99,235,0.5)',
             }}
-          />
-        ))}
+          >
+            {isLast ? 'Let\u2019s go' : 'Next'}
+            <span className="text-white/85">→</span>
+          </button>
+        </div>
       </div>
     </motion.div>
   )

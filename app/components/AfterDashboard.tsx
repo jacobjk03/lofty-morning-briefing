@@ -144,7 +144,7 @@ function Dialer({ name, onClose }: { name: string; onClose: () => void }) {
 }
 
 /* ─── Lead Card ─────────────────────────────────────────────────── */
-function LeadCard({ lead, idx }: { lead: typeof LEADS_DEFAULT[0]; idx: number }) {
+function LeadCard({ lead, idx, onOpenLead }: { lead: typeof LEADS_DEFAULT[0]; idx: number; onOpenLead?: (leadIndex: number) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [showDialer, setShowDialer] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -163,56 +163,61 @@ function LeadCard({ lead, idx }: { lead: typeof LEADS_DEFAULT[0]; idx: number })
 
   return (
     <div
-      className="bg-white rounded-3xl shadow-sm border border-gray-100/80 overflow-hidden"
+      className="bg-white rounded-3xl shadow-sm border border-gray-100/80 overflow-hidden h-full flex flex-col"
       style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.05)' }}
     >
-      <div className="p-7">
+      <div className="p-5 flex-1 flex flex-col">
         {/* Header */}
-        <div className="flex items-start justify-between mb-5">
-          <div className="flex items-center gap-4">
+        <div className="flex items-start justify-between mb-4 gap-2">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-[16px]"
+              className="w-10 h-10 rounded-xl flex items-center justify-center font-extrabold text-[13px] shrink-0"
               style={{ background: c.bg, color: c.text }}
             >
               {initials(lead.name)}
             </div>
-            <div>
-              <h4 className="font-extrabold text-[18px] text-gray-900 leading-tight" style={{ fontFamily: "'Noto Serif', serif" }}>{lead.name}</h4>
-              <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                <MapPinIcon size={10} weight="regular" />{lead.location} · {lead.ago}
+            <div className="min-w-0">
+              <h4 className="font-extrabold text-[15px] text-gray-900 leading-tight truncate" style={{ fontFamily: "'Noto Serif', serif" }}>{lead.name}</h4>
+              <p className="text-[10.5px] text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                <MapPinIcon size={10} weight="regular" className="shrink-0" />
+                <span className="truncate">{lead.location}</span>
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-center rounded-2xl px-3.5 py-2" style={{ background: c.bg }}>
-            <span className="font-black text-[22px] leading-none" style={{ color: c.text }}>{lead.score}</span>
-            <span className="text-[7px] font-extrabold uppercase tracking-widest mt-0.5" style={{ color: c.text }}>Score</span>
+          <div className="flex flex-col items-center rounded-xl px-2 py-1.5 shrink-0" style={{ background: c.bg }}>
+            <span className="font-black text-[17px] leading-none" style={{ color: c.text }}>{lead.score}</span>
+            <span className="text-[6.5px] font-extrabold uppercase tracking-widest mt-0.5" style={{ color: c.text }}>Score</span>
           </div>
         </div>
 
-        <p className="text-[12px] text-gray-400 mb-4">{lead.sub}</p>
+        <p className="text-[11.5px] text-gray-400 mb-3 line-clamp-2">{lead.sub}</p>
 
         {/* One-line Copilot reasoning — trust builder without clutter */}
-        <div className="flex items-start gap-2 mb-5 text-[12.5px] text-gray-600 leading-[1.5]">
-          <LoftyMark size={13} className="mt-0.5" />
-          <span><span className="font-semibold text-gray-800">Why now:</span> {lead.reasons[0]}.</span>
+        <div className="flex items-start gap-2 mb-4 text-[12px] text-gray-600 leading-[1.5] flex-1">
+          <LoftyMark size={12} className="mt-0.5" />
+          <span className="line-clamp-3"><span className="font-semibold text-gray-800">Why now:</span> {lead.reasons[0]}.</span>
         </div>
 
         {/* Primary actions — collapsed to 2 */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 mt-auto">
           <button
-            onClick={() => { setShowDialer(d => !d); setContacted(true) }}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-white font-bold text-[13px] transition-all active:scale-[0.98]"
-            style={{ background: 'linear-gradient(180deg,#2563eb,#1d4ed8)', boxShadow: '0 8px 20px -6px rgba(37,99,235,0.4)' }}
+            onClick={() => {
+              setContacted(true)
+              if (onOpenLead) onOpenLead(idx + 1)
+              else setShowDialer(d => !d)
+            }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-white font-bold text-[12px] transition-all active:scale-[0.98]"
+            style={{ background: 'linear-gradient(180deg,#2563eb,#1d4ed8)', boxShadow: '0 6px 16px -6px rgba(37,99,235,0.4)' }}
           >
-            <PhoneIcon size={15} weight="fill" />
-            {showDialer ? 'In Call…' : 'Call Scott'}
+            <PhoneIcon size={13} weight="fill" />
+            {onOpenLead ? `Call ${firstName}` : (showDialer ? 'In Call…' : `Call ${firstName}`)}
           </button>
           <button
             onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 text-[12px] font-bold hover:bg-gray-100 transition-all"
+            className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 text-[11.5px] font-bold hover:bg-gray-100 transition-all shrink-0"
           >
             {expanded ? 'Less' : 'Why?'}
-            <CaretDownIcon size={12} weight="bold" className="transition-transform duration-200" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            <CaretDownIcon size={11} weight="bold" className="transition-transform duration-200" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
           </button>
         </div>
 
@@ -221,7 +226,7 @@ function LeadCard({ lead, idx }: { lead: typeof LEADS_DEFAULT[0]; idx: number })
 
         {/* Expanded detail */}
         {expanded && (
-          <div className="mt-5 pt-5 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="mt-5 pt-5 border-t border-gray-100 grid grid-cols-1 gap-5">
             {/* Score bars detail */}
             <div>
               <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-gray-400 mb-3">Score Breakdown</p>
@@ -308,10 +313,11 @@ function LeadCard({ lead, idx }: { lead: typeof LEADS_DEFAULT[0]; idx: number })
 /* ─── Main ──────────────────────────────────────────────────────── */
 interface Props {
   onBack?: () => void
+  onOpenLead?: (leadIndex: number) => void
   leads?: any[]; transactions?: any[]; listings?: any[]; tasks?: any[]; appointments?: any[]
 }
 
-export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, listings: liDb, tasks: tkDb, appointments: aDb }: Props) {
+export default function AfterDashboard({ onBack, onOpenLead, leads: lDb, transactions: tDb, listings: liDb, tasks: tkDb, appointments: aDb }: Props) {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
   const [setupOpen, setSetupOpen] = useState(false)
 
@@ -338,33 +344,28 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#f8f9fd' }}>
       <style>{FONT_IMPORT}</style>
 
-      {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between px-6 h-12 bg-white/80 backdrop-blur border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          {onBack && (
-            <button onClick={onBack} className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700">
-              <ArrowLeftIcon size={12} weight="bold" />Back
-            </button>
-          )}
-          <span className="font-extrabold text-[15px] text-gray-900" style={{ fontFamily: "'Noto Serif', serif" }}>The Editorial Estate</span>
-        </div>
-        <span className="text-[11px] text-gray-400 font-medium tabular-nums">Apr 18, 2026</span>
-      </div>
-
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-5 pt-8 pb-16">
+        <div className="max-w-4xl mx-auto px-5 pt-10 pb-16">
 
-          {/* ── Two column layout ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {/* LEFT — main */}
-            <div className="lg:col-span-2 space-y-8">
+          {/* Single focused column */}
+          <div className="space-y-8">
 
               {/* Copilot Morning Briefing */}
               <section>
-                <div className="inline-flex items-center gap-2 mb-3">
-                  <LoftyMark size={14} halo />
-                  <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-blue-500">Morning briefing · Lofty Copilot</p>
+                <div className="flex items-start justify-between gap-6 mb-4">
+                  <div className="inline-flex items-center gap-2">
+                    <LoftyMark size={14} halo />
+                    <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-blue-500">Morning briefing · Lofty Copilot</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-gray-400 mb-0.5">Today</p>
+                    <p className="text-[28px] md:text-[34px] font-extrabold leading-none text-gray-900 tabular-nums" style={{ fontFamily: "'Noto Serif', serif" }}>
+                      {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                      {new Date().toLocaleDateString('en-US', { weekday: 'long' })} · {new Date().getFullYear()}
+                    </p>
+                  </div>
                 </div>
                 <h1 className="text-[32px] md:text-[40px] font-extrabold leading-[1.1] text-gray-900 mb-3" style={{ fontFamily: "'Noto Serif', serif" }}>
                   Good morning, Baylee.{' '}
@@ -404,107 +405,123 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                   <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-gray-400">Priority Portfolios</p>
                   <span className="text-[11px] font-bold text-blue-600 cursor-pointer">View All</span>
                 </div>
-                <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   {leads.map((lead, i) => (
-                    <LeadCard key={lead.name} lead={lead} idx={i} />
+                    <LeadCard key={lead.name} lead={lead} idx={i} onOpenLead={onOpenLead} />
                   ))}
                 </div>
               </section>
 
-              {/* Transactions */}
-              <section className="bg-white rounded-3xl p-6 shadow-sm" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <CurrencyDollarIcon size={16} weight="bold" className="text-blue-600" />
-                    <h3 className="text-[13px] font-extrabold text-gray-800 uppercase tracking-wide">Transactions</h3>
-                  </div>
-                  {urgentTx > 0 && <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-2.5 py-1 rounded-full">{urgentTx} urgent</span>}
+              {/* Day-at-a-glance — readable, single unified card */}
+              <section
+                className="bg-white rounded-2xl overflow-hidden"
+                style={{ border: '1px solid rgba(15,23,42,0.07)', boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+              >
+                <div className="px-6 py-3.5 flex items-center justify-between border-b border-gray-100">
+                  <p className="text-[11.5px] font-semibold tracking-[0.14em] uppercase text-gray-600">Your day at a glance</p>
+                  <span className="text-[12px] text-gray-500 font-medium tabular-nums">Apr 18 · Saturday</span>
                 </div>
-                <div className="space-y-2.5">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                  {/* Tasks */}
+                  <div className="px-6 py-5">
+                    <div className="flex items-baseline justify-between mb-3">
+                      <p className="text-[14px] font-semibold text-gray-900">Tasks</p>
+                      <p className="text-[13px] text-gray-700 tabular-nums">
+                        <span className="font-bold text-gray-900">{totalTasks}</span> <span className="text-gray-500">today</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-5 text-[13.5px]">
+                      <span className="inline-flex items-baseline gap-1.5">
+                        <span className="text-gray-500">Call</span>
+                        <span className="font-bold text-gray-900 tabular-nums">{tasks.Call}</span>
+                      </span>
+                      <span className="inline-flex items-baseline gap-1.5">
+                        <span className="text-gray-500">Text</span>
+                        <span className="font-bold text-gray-900 tabular-nums">{tasks.Text}</span>
+                      </span>
+                      <span className="inline-flex items-baseline gap-1.5">
+                        <span className="text-gray-500">Email</span>
+                        <span className="font-bold text-gray-900 tabular-nums">{tasks.Email}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Showings */}
+                  <div className="px-6 py-5">
+                    <div className="flex items-baseline justify-between mb-3">
+                      <p className="text-[14px] font-semibold text-gray-900">Showings</p>
+                      <p className="text-[13px] text-gray-700 tabular-nums">
+                        <span className="font-bold text-gray-900">{appts.length + 1}</span> <span className="text-gray-500">today</span>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {appts.slice(0, 2).map(a => (
+                        <div key={a.contact + a.time} className="flex items-baseline justify-between gap-3 text-[13px]">
+                          <span className="text-gray-700 truncate">
+                            <span className="font-semibold text-gray-900">{a.contact}</span>
+                            <span className="text-gray-500"> · {a.address.split(',')[0]}</span>
+                          </span>
+                          <span className="text-gray-900 font-semibold tabular-nums shrink-0">{a.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Unified Copilot footer */}
+                <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2 text-[12.5px] text-gray-700 font-medium">
+                  <LoftyMark size={11} />
+                  <span>Copilot drafted 4 messages and optimized your showing route.</span>
+                </div>
+              </section>
+
+              {/* Transactions — editorial list, readable */}
+              <section
+                className="bg-white rounded-2xl overflow-hidden"
+                style={{ border: '1px solid rgba(15,23,42,0.07)', boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+              >
+                <div className="px-6 py-3.5 flex items-center justify-between border-b border-gray-100">
+                  <p className="text-[11.5px] font-semibold tracking-[0.14em] uppercase text-gray-600">Transactions</p>
+                  {urgentTx > 0 && (
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-red-600">
+                      <span className="w-1.5 h-1.5 rounded-pill bg-red-500 animate-pulse" />
+                      {urgentTx} urgent
+                    </span>
+                  )}
+                </div>
+
+                <div className="divide-y divide-gray-100">
                   {txs.map(tx => (
-                    <div key={tx.name} className={`flex items-center justify-between p-4 rounded-2xl ${tx.alert ? 'bg-red-50 border border-red-100' : 'bg-gray-50 border border-gray-100'}`}>
-                      <div>
-                        <p className={`text-[13px] font-semibold ${tx.alert ? 'text-red-700' : 'text-gray-800'}`}>{tx.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[11px] text-gray-400">{tx.stage} · {tx.deadline}</span>
-                          {tx.alert && tx.issue && <span className="text-[11px] text-red-500 flex items-center gap-1"><WarningCircleIcon size={11} weight="fill" />{tx.issue}</span>}
+                    <div
+                      key={tx.name}
+                      className={`px-6 py-4 flex items-center justify-between gap-4 hover:bg-gray-50 transition-colors ${
+                        tx.alert ? 'border-l-2 border-red-500' : ''
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[14.5px] font-semibold text-gray-900 truncate">{tx.name}</p>
+                        <div className="flex items-center gap-2 mt-1 text-[12.5px]">
+                          <span className="text-gray-600">{tx.stage} · {tx.deadline}</span>
+                          {tx.alert && tx.issue && (
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span className="text-red-600 font-semibold">{tx.issue}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <span className={`text-[14px] font-extrabold tabular-nums ${tx.alert ? 'text-red-600' : 'text-gray-700'}`}>{tx.amount}</span>
+                      <span className="text-[15px] font-bold tabular-nums text-gray-900 shrink-0">{tx.amount}</span>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-[11px] font-bold text-blue-600">
-                  <LoftyMark size={12} />Copilot confirmed 2 close dates today
+
+                <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2 text-[12.5px] text-gray-700 font-medium">
+                  <LoftyMark size={11} />
+                  <span>Copilot confirmed 2 close dates today.</span>
                 </div>
               </section>
 
-            </div>
-
-            {/* RIGHT — sidebar */}
-            <div className="space-y-5">
-              <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-gray-400">Your day at a glance</p>
-
-              {/* Bento: Tasks + Appointments */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-3xl p-5 border border-gray-100" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
-                  <ClipboardTextIcon size={18} weight="bold" className="text-blue-600 mb-2" />
-                  <p className="font-extrabold text-[28px] text-gray-900 leading-none">{totalTasks}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mt-1">Tasks today</p>
-                  <div className="mt-3 space-y-1">
-                    {(['Call', 'Text', 'Email'] as const).map(k => (
-                      <div key={k} className="flex items-center justify-between text-[10px]">
-                        <span className="text-gray-500">{k}</span>
-                        <span className="font-extrabold text-gray-800">{tasks[k]}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-100 text-[9.5px] font-bold text-blue-600 flex items-center gap-1">
-                    <LoftyMark size={10} />Copilot drafted 4
-                  </div>
-                </div>
-
-                <div className="rounded-3xl p-5 text-white" style={{ background: 'linear-gradient(135deg,#2563eb,#1d4ed8)' }}>
-                  <CalendarIcon size={18} weight="bold" className="mb-2 opacity-80" />
-                  <p className="font-extrabold text-[28px] leading-none">{appts.length + 1}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/60 mt-1">Showings</p>
-                  <div className="mt-3 space-y-1">
-                    {appts.map(a => (
-                      <div key={a.contact + a.time} className="flex justify-between text-[10px]">
-                        <span className="text-white/70">{a.contact}</span>
-                        <span className="font-extrabold">{a.time}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-white/20 text-[9.5px] font-bold text-white/80 flex items-center gap-1">
-                    <LoftyMark size={10} />Copilot optimized your route
-                  </div>
-                </div>
-              </div>
-
-              {/* Listings — kept intentionally minimal so sidebar stays calm */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-100 hidden" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <HouseIcon size={15} weight="bold" className="text-blue-600" />
-                  <span className="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">My Listings</span>
-                </div>
-                <div className="space-y-3">
-                  {listings.map(l => (
-                    <div key={l.address} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                        <HouseIcon size={14} weight="regular" className="text-blue-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold text-gray-800 truncate">{l.address.split(',')[0]}</p>
-                        <p className="text-[10px] text-gray-400">{l.price} · {l.bed}bd · {l.views}v</p>
-                      </div>
-                      <span className="text-[8px] font-extrabold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">{l.status}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
           </div>
         </div>
       </div>

@@ -161,7 +161,9 @@ export default function AIAssistant({ onNavigate, onOpenAddLead, onOpenSmartPlan
         body: JSON.stringify({ messages: newMessages }),
       })
       const data = await res.json()
-      const reply: string = data.message
+      const reply: string = res.status === 429
+        ? (data.message || 'Demo limit reached — add your own Groq key in .env.local to keep chatting.')
+        : data.message
       setMessages([...newMessages, { role: 'assistant', content: reply }])
       if (voiceOnRef.current) {
         voice.speak(reply)

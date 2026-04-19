@@ -1,3 +1,5 @@
+import { consumeQuota, quotaExceededResponse } from '@/lib/quota'
+
 interface PlanStep {
   day: number
   channel: 'sms' | 'email' | 'call' | 'task'
@@ -80,6 +82,9 @@ function fallbackPlan(goal: string): GeneratedPlan {
 }
 
 export async function POST(req: Request) {
+  const q = await consumeQuota()
+  if (!q.ok) return quotaExceededResponse(q)
+
   const { goal } = await req.json()
   if (!goal || typeof goal !== 'string') {
     return Response.json({ plan: null })

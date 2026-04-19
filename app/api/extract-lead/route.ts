@@ -1,3 +1,5 @@
+import { consumeQuota, quotaExceededResponse } from '@/lib/quota'
+
 function heuristicExtract(text: string) {
   const nameMatch = text.match(/met\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)|([A-Z][a-z]+\s+[A-Z][a-z]+)\s+(?:is|has|was|will|moved)/)
   const phone = text.match(/\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/)?.[0]
@@ -17,6 +19,9 @@ function heuristicExtract(text: string) {
 }
 
 export async function POST(req: Request) {
+  const q = await consumeQuota()
+  if (!q.ok) return quotaExceededResponse(q)
+
   const { text } = await req.json()
   if (!text || typeof text !== 'string') {
     return Response.json({ lead: {} })

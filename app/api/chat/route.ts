@@ -1,4 +1,5 @@
 import { getLeads, getTransactions, getTasks, getListings, getSmartPlans, getAppointments } from '@/lib/getData'
+import { consumeQuota, quotaExceededResponse } from '@/lib/quota'
 
 async function buildSystemPrompt() {
   const [leads, transactions, tasks, listings, smartPlans, appointments] = await Promise.all([
@@ -44,6 +45,9 @@ function fallbackReply(last: string) {
 }
 
 export async function POST(req: Request) {
+  const q = await consumeQuota()
+  if (!q.ok) return quotaExceededResponse(q)
+
   const { messages } = await req.json()
   const last = messages?.[messages.length - 1]?.content || ''
 

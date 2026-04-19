@@ -18,11 +18,12 @@ import {
 } from '@phosphor-icons/react'
 import LoftyMark from './LoftyMark'
 import Toast from './Toast'
-import CallOverlay from './CallOverlay'
+import CallPanel from './CallPanel'
 import { useVoice } from '../hooks/useVoice'
 
 interface LeadDetailProps {
   onBack: () => void
+  leadIndex?: number
 }
 
 const SCORE_CATEGORIES = [
@@ -89,7 +90,7 @@ const DEFAULT_BREAKDOWN: Breakdown[] = [
   { Icon: ShieldCheckIcon,     label: 'Contact Quality',  pts: 10, maxPts: 10, description: 'Valid phone, verified email' },
 ]
 
-export default function LeadDetail({ onBack }: LeadDetailProps) {
+export default function LeadDetail({ onBack, leadIndex = 1 }: LeadDetailProps) {
   const [leadName, setLeadName] = useState('Scott Hayes')
   const [leadScore, setLeadScore] = useState(92)
   const [neighborhood, setNeighborhood] = useState('Phoenix, AZ')
@@ -109,15 +110,19 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
   const voice = useVoice()
 
   useEffect(() => {
-    // "1" = top lead by score (same as old SQLite id=1 for Scott)
-    fetch('/api/leads/1')
+    // leadIndex is 1-based — resolves to the Nth lead by score in InsForge
+    setLeadUuid(null)
+    setShowCall(false)
+    setMessageSent(false)
+    setContacted(false)
+    fetch(`/api/leads/${leadIndex}`)
       .then(r => r.json())
       .then((data: any) => {
         if (!data) return
         if (data.id) setLeadUuid(String(data.id))
         setLeadName(data.name || 'Scott Hayes')
         setLeadScore(data.score ?? 92)
-        setNeighborhood(data.neighborhood || 'Phoenix, AZ')
+        setNeighborhood(data.neighborhood || data.city || 'Phoenix, AZ')
         setBreakdown(buildBreakdown(data.score ?? 92, data.activity || []))
         const first = (data.name || 'Scott').split(' ')[0]
         const top = (data.activity?.[0] || '650 Maple').toLowerCase()
@@ -130,7 +135,7 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
       voice.cancel()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [leadIndex])
 
   const initials = useMemo(
     () => leadName.split(' ').map(n => n[0]).join('').slice(0, 2),
@@ -188,8 +193,8 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-[1040px] mx-auto px-8 pt-10 pb-16">
+      <div className={`flex-1 overflow-y-auto relative z-10 transition-all duration-300 ${showCall ? 'pr-[440px]' : ''}`}>
+        <div className={`mx-auto px-8 pt-10 pb-16 transition-all duration-300 ${showCall ? 'max-w-[720px]' : 'max-w-[1040px]'}`}>
           {/* ─── Hero ─── */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -300,13 +305,13 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
           </motion.div>
 
           {/* ─── 7/5 Grid ─── */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className={`grid grid-cols-1 gap-6 ${showCall ? '' : 'lg:grid-cols-12'}`}>
             {/* Left: Score breakdown */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="lg:col-span-7"
+              className={showCall ? '' : 'lg:col-span-7'}
             >
               <div
                 className="bg-white rounded-[18px] p-7"
@@ -376,7 +381,7 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="lg:col-span-5 flex flex-col"
+              className={`flex flex-col ${showCall ? '' : 'lg:col-span-5'}`}
             >
               <div
                 className="bg-white rounded-[18px] p-7 flex flex-col h-full"
@@ -550,22 +555,26 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
         </div>
       </div>
 
-      {/* Call overlay */}
+      {/* Inline call panel — pinned right drawer, Cluely-style live coaching */}
       <AnimatePresence>
         {showCall && (
-          <CallOverlay
-            name={leadName}
-            initials={initials}
-            leadId={leadUuid ?? undefined}
-            onEnd={(secs) => {
-              setShowCall(false)
-              setContacted(true)
-              const mins = Math.floor(secs / 60)
-              const s = secs % 60
-              const duration = mins > 0 ? `${mins}m ${s}s` : `${s}s`
-              setToast(`Call logged · ${duration} · CRM updated`)
-            }}
-          />
+          <div className="fixed top-[44px] right-0 bottom-0 z-40 pointer-events-none">
+            <div className="pointer-events-auto h-full">
+              <CallPanel
+                name={leadName}
+                initials={initials}
+                leadId={leadUuid ?? undefined}
+                onEnd={(secs) => {
+                  setShowCall(false)
+                  setContacted(true)
+                  const mins = Math.floor(secs / 60)
+                  const s = secs % 60
+                  const duration = mins > 0 ? `${mins}m ${s}s` : `${s}s`
+                  setToast(`Call logged · ${duration} · CRM updated`)
+                }}
+              />
+            </div>
+          </div>
         )}
       </AnimatePresence>
 

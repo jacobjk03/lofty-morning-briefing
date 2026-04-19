@@ -1,4 +1,5 @@
 import { getLeadById } from '@/lib/queries'
+import { consumeQuota, quotaExceededResponse } from '@/lib/quota'
 
 function fallbackDraft(lead: { name: string; activity: string[]; neighborhood?: string }) {
   const firstName = lead.name.split(' ')[0]
@@ -7,6 +8,9 @@ function fallbackDraft(lead: { name: string; activity: string[]; neighborhood?: 
 }
 
 export async function POST(req: Request) {
+  const q = await consumeQuota()
+  if (!q.ok) return quotaExceededResponse(q)
+
   let leadId: string | number | undefined
   try {
     const body = await req.json()

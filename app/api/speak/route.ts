@@ -1,4 +1,9 @@
+import { consumeQuota, quotaExceededResponse } from '@/lib/quota'
+
 export async function POST(req: Request) {
+  const q = await consumeQuota()
+  if (!q.ok) return quotaExceededResponse(q)
+
   const { text } = await req.json()
 
   if (!process.env.ELEVENLABS_API_KEY) {

@@ -38,6 +38,7 @@ function targetLabel(s: Screen): string {
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('after')
+  const [leadIndex, setLeadIndex] = useState<number>(1)
   const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null)
   const [addLeadOpen, setAddLeadOpen] = useState(false)
   const [smartPlanOpen, setSmartPlanOpen] = useState(false)
@@ -131,104 +132,129 @@ export default function Home() {
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh', overflow: 'hidden', background: '#f3f4f8' }}>
-      {/* Top toggle bar — minimal */}
-      <div className="relative flex items-center gap-5 px-5 py-2 border-b border-ink-200/70 shrink-0 bg-white/80 backdrop-blur">
-        <div className="flex items-center gap-1.5 mr-1">
-          <span className="w-1.5 h-1.5 rounded-pill bg-blue-500" />
-          <span className="text-[10.5px] font-semibold tracking-wider2 text-ink-800">LOFTY AI</span>
-        </div>
-
-        <nav className="flex items-center gap-0.5">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => goTo(tab.id)}
-              className={`relative px-2.5 h-7 rounded-md text-[11.5px] font-medium whitespace-nowrap transition-colors
-                ${screen === tab.id
-                  ? 'text-ink-900'
-                  : 'text-ink-400 hover:text-ink-700'}`}
-            >
-              {tab.label}
-              {screen === tab.id && (
-                <span className="absolute left-2.5 right-2.5 -bottom-[9px] h-[2px] rounded-full bg-ink-900" />
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <style>{`
-          @keyframes naviaGlow {
-            0%, 100% { text-shadow: 0 0 8px #C4622D, 0 0 16px #C4622D; color: #C4622D; }
-            50% { text-shadow: 0 0 20px #C4622D, 0 0 40px #C4622D, 0 0 60px #C4622D; color: #d4733d; }
-          }
-          @keyframes sparkleSpin {
-            0%   { transform: rotate(0deg)   scale(1);    }
-            12%  { transform: rotate(360deg) scale(1.2);  }
-            24%  { transform: rotate(720deg) scale(1);    }
-            36%  { transform: rotate(720deg) scale(1);    }
-            48%  { transform: rotate(1080deg) scale(1.2); }
-            60%  { transform: rotate(1440deg) scale(1);   }
-            100% { transform: rotate(1440deg) scale(1);   }
-          }
-          @keyframes fadeInNav {
-            from { opacity: 0; transform: translateY(-4px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .navia-sparkle { display: inline-block; animation: sparkleSpin 2.5s ease-in-out infinite; color: #C4622D; line-height: 1; }
-          .navia-word { animation: naviaGlow 2s ease-in-out infinite; text-decoration: none; }
-          .navia-word:hover { text-decoration: underline; }
-          .navia-wrapper { opacity: 0; animation: fadeInNav 0.8s ease-out 0.5s forwards; }
-        `}</style>
-
-        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
-          <div
-            className="navia-wrapper pointer-events-auto flex items-center gap-2"
+      {/* Koala-style floating pill nav */}
+      <div className="shrink-0 px-4 md:px-6 pt-4 pb-3">
+        <div className="max-w-5xl mx-auto flex items-center gap-3">
+          <header
+            className="flex-1 flex items-center justify-between gap-4 rounded-pill bg-white pl-4 pr-2 h-12"
             style={{
-              background: '#fafafa',
-              border: '1px solid #f3f4f6',
-              borderRadius: 8,
-              padding: '6px 14px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              border: '1px solid rgba(15,23,42,0.08)',
+              boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.10)',
             }}
           >
-            <svg className="navia-sparkle" width="22" height="20" viewBox="0 0 28 24" fill="#C4622D" style={{ flexShrink: 0 }}>
-              {/* Large star */}
+            {/* Wordmark */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className="inline-block rounded-pill"
+                style={{
+                  width: 18, height: 18,
+                  background: 'radial-gradient(circle at 30% 25%, #67E8F9 0%, #2563EB 55%, #0B1220 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)',
+                }}
+              />
+              <span className="font-headline font-bold text-[16px] leading-none tracking-tightest text-ink-900">
+                Lofty
+              </span>
+              <span className="font-headline font-bold italic text-[16px] leading-none tracking-tightest text-blue-600">
+                AI
+              </span>
+            </div>
+
+            {/* Text nav */}
+            <nav className="hidden md:flex items-center gap-1 mx-auto">
+              {TABS.map((tab) => {
+                const active = screen === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => goTo(tab.id)}
+                    className={`px-3 h-8 rounded-pill text-[12.5px] whitespace-nowrap transition-colors
+                      ${active
+                        ? 'font-semibold text-ink-900 bg-ink-100/70'
+                        : 'font-medium text-ink-500 hover:text-ink-900'}`}
+                  >
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            {/* Right cluster */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setIntroOpen(true)}
+                className="hidden sm:inline-flex items-center h-8 px-3 rounded-pill text-[11.5px] font-semibold tracking-tight text-ink-600 hover:text-ink-900 hover:bg-ink-50 transition-all"
+                title="Replay the intro story"
+              >
+                Replay intro
+              </button>
+              <button
+                onClick={() => setAddLeadOpen(true)}
+                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-pill text-[12px] font-semibold tracking-tight text-white transition-all active:scale-[0.97]"
+                style={{
+                  background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(37,99,235,0.45)',
+                }}
+              >
+                <span className="text-white/85 font-normal text-[13px] leading-none -mt-px">+</span>
+                Add lead
+              </button>
+            </div>
+          </header>
+
+          {/* Navia founder-badge — sits beside the main pill, proud and on-brand */}
+          <style>{`
+            @keyframes naviaSparkleSpin {
+              0%, 60%, 100% { transform: rotate(0deg) scale(1); }
+              10% { transform: rotate(180deg) scale(1.18); }
+              20% { transform: rotate(360deg) scale(1); }
+            }
+            @keyframes naviaShimmer {
+              0%, 100% { background-position: 0% 50%; }
+              50%      { background-position: 100% 50%; }
+            }
+            .navia-badge {
+              position: relative;
+              overflow: hidden;
+            }
+            .navia-badge::before {
+              content: '';
+              position: absolute;
+              inset: 0;
+              background: linear-gradient(120deg, rgba(255,221,199,0) 0%, rgba(255,221,199,0.55) 50%, rgba(255,221,199,0) 100%);
+              background-size: 220% 100%;
+              animation: naviaShimmer 3.2s ease-in-out infinite;
+              pointer-events: none;
+              opacity: 0.9;
+            }
+            .navia-badge-spark { animation: naviaSparkleSpin 3s ease-in-out infinite; display: inline-block; }
+          `}</style>
+
+          <a
+            href="https://joinnavia.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navia-badge hidden md:inline-flex shrink-0 items-center gap-1.5 h-12 px-3.5 rounded-pill transition-all active:scale-[0.98] hover:brightness-[1.03] whitespace-nowrap"
+            style={{
+              background: 'linear-gradient(135deg, #FFF8F1 0%, #FFE8D5 100%)',
+              border: '1px solid rgba(196,98,45,0.22)',
+              boxShadow:
+                '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(196,98,45,0.20), inset 0 1px 0 rgba(255,255,255,0.55)',
+            }}
+            title="joinnavia.com — built with love by team Navia"
+          >
+            <svg className="navia-badge-spark relative z-[1]" width={13} height={13} viewBox="0 0 28 24" fill="#C4622D">
               <path d="M8 5 L9.54 10.46 L15 12 L9.54 13.54 L8 19 L6.46 13.54 L1 12 L6.46 10.46 Z"/>
-              {/* Medium star */}
               <path d="M19 1 L20.1 4.9 L24 6 L20.1 7.1 L19 11 L17.9 7.1 L14 6 L17.9 4.9 Z"/>
-              {/* Small star */}
               <path d="M21 14.5 L21.77 17.23 L24.5 18 L21.77 18.77 L21 21.5 L20.23 18.77 L17.5 18 L20.23 17.23 Z"/>
             </svg>
-            <span style={{ width: 1, height: 20, background: '#e5e7eb', display: 'inline-block', margin: '0 4px' }} />
-            <span style={{ fontSize: 14, color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              from the team behind{' '}
-              <a
-                href="https://joinnavia.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="navia-word"
-                style={{ fontSize: 14, fontWeight: 700, color: '#C4622D' }}
-              >
+            <span className="relative z-[1] text-[11.5px] font-medium leading-none" style={{ color: '#7D2D00' }}>
+              built with love by team{' '}
+              <span className="font-headline font-bold italic tracking-tightest text-[13px]" style={{ color: '#C4622D' }}>
                 Navia
-              </a>
+              </span>
             </span>
-          </div>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => setAddLeadOpen(true)}
-            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill text-[11px] font-semibold tracking-tight text-white transition-all active:scale-[0.97]"
-            style={{
-              background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 4px 12px -4px rgba(37,99,235,0.45)',
-            }}
-          >
-            + Add lead
-          </button>
-          <span className="hidden md:inline text-[10px] text-ink-300 font-medium tracking-tight">
-            GlobeHack '26
-          </span>
+          </a>
         </div>
       </div>
 
@@ -256,11 +282,11 @@ export default function Home() {
           }`}
         >
           <div className="flex-1 min-h-0 overflow-hidden">
-            <AfterDashboard onBack={() => goTo('after')} leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
+            <AfterDashboard onBack={() => goTo('after')} onOpenLead={(i) => { setLeadIndex(i); goTo('lead') }} leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
           </div>
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'lead' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <LeadDetail onBack={() => goTo('after')} />
+          <LeadDetail onBack={() => goTo('after')} leadIndex={leadIndex} />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'agents' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <AIAgents onGoToBriefing={() => goTo('after')} onGoToChat={() => openChatWith()} />

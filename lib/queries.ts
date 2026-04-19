@@ -166,8 +166,8 @@ export async function logCallToInsForge(
   durationSeconds: number,
   notes?: string,
   transcript?: Array<{ speaker: 'agent' | 'user'; text: string; time: number }> | null
-) {
-  const { error } = await insforge.database
+): Promise<any | null> {
+  const { data, error } = await insforge.database
     .from('call_logs')
     .insert([{
       lead_name: leadName,
@@ -176,5 +176,53 @@ export async function logCallToInsForge(
       notes: notes ?? null,
       transcript: transcript && transcript.length > 0 ? transcript : null,
     }])
-  if (error) console.error('[InsForge] Failed to log call:', error)
+    .select()
+    .single()
+  if (error) {
+    console.error('[InsForge] Failed to log call:', error)
+    return null
+  }
+  return data
+}
+
+/**
+ * Attach a transcript storage URL to an existing call_logs row.
+ * Falls back to stashing the URL in `notes` if the update fails (e.g. column missing).
+ * Never throws — call flow must continue even if this fails.
+ */
+export async function attachTranscriptUrlToCallLog(
+  callLogId: string,
+  transcriptUrl: string,
+  existingNotes: string | null | undefined
+): Promise<boolean> {
+  try {
+    const { error } = await insforge.database
+      .from('call_logs')
+      .update({ transcript_url: transcriptUrl })
+      .eq('id', callLogId)
+    if (!error) {
+      console.log('[storage] attached transcript_url to call_logs row', callLogId)
+      return true
+    }
+    console.warn('[storage] transcript_url column update failed, falling back to notes:', error.message || error)
+  } catch (e) {
+    console.warn('[storage] transcript_url update threw, falling back to notes:', e)
+  }
+  try {
+    const base = existingNotes ? `${existingNotes}\n` : ''
+    const merged = `${base}Transcript: ${transcriptUrl}`
+    const { error } = await insforge.database
+      .from('call_logs')
+      .update({ notes: merged })
+      .eq('id', callLogId)
+    if (error) {
+      console.error('[storage] notes fallback failed:', error.message || error)
+      return false
+    }
+    console.log('[storage] stashed transcript url in notes for row', callLogId)
+    return true
+  } catch (e) {
+    console.error('[storage] notes fallback threw:', e)
+    return false
+  }
 }

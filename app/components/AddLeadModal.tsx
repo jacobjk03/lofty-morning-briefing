@@ -56,6 +56,12 @@ export default function AddLeadModal({ onClose, onSaved }: AddLeadModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}))
+        setPhase('paste')
+        alert(data.message || 'Demo limit reached — add your own Groq key in .env.local to continue.')
+        return
+      }
       const data = await res.json()
       setParsed(data.lead || {})
     } catch {

@@ -73,6 +73,12 @@ export default function SmartPlanModal({ onClose, onLaunched }: SmartPlanModalPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal: g }),
       })
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}))
+        setPhase('prompt')
+        alert(data.message || 'Demo limit reached — add your own Groq key in .env.local to continue.')
+        return
+      }
       const data = await res.json()
       setPlan(data.plan || fallbackPlan(g))
     } catch {
