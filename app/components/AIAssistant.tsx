@@ -87,6 +87,7 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const lastPrefillNonce = useRef<number | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const send = async (text: string) => {
     const trimmed = text.trim()
@@ -132,7 +133,11 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialInput])
 
-  // No forced scroll — editorial layout stays put; user scrolls manually.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [messages, loading])
 
   const hasConversation = messages.length > 0
   const lastUser = useMemo(
@@ -163,7 +168,7 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
       />
 
       {/* Scroll canvas */}
-      <div className="flex-1 min-h-0 overflow-y-auto relative z-10">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto relative z-10">
         <div className="max-w-[720px] mx-auto w-full px-8 pt-14 pb-40">
           {!hasConversation ? (
             <motion.div
