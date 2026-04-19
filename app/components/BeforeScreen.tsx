@@ -19,14 +19,14 @@ import {
   ArrowsClockwiseIcon,
 } from '@phosphor-icons/react'
 
-const leads = [
+const LEADS_DEFAULT = [
   { name: 'Scott Hayes', score: 92, color: '#2563EB' },
   { name: 'Maria Gonzalez', score: 78, color: '#059669' },
   { name: 'David Kim', score: 61, color: '#d97706' },
   { name: 'Amy Chen', score: 44, color: '#dc2626' },
 ]
 
-const transactions = [
+const TRANSACTIONS_DEFAULT = [
   { name: 'Johnson — 650 Maple St', stage: 'Closing', deadline: 'Apr 21', amount: '$485K', alert: true },
   { name: 'Williams — 1842 Camelback', stage: 'Inspection', deadline: 'Apr 25', amount: '$520K', alert: false },
   { name: 'Chen — 234 Desert View', stage: 'Pending', deadline: 'May 2', amount: '$389K', alert: false },
@@ -41,13 +41,64 @@ const hotSheets = [
   { name: 'Mesa Investment Properties', updates: 11 },
 ]
 
-const listings = [
+const LISTINGS_DEFAULT = [
   { address: '650 Maple St, Scottsdale', price: '$749,000', bed: 4, bath: 3, status: 'Active' },
   { address: '1842 Camelback Rd, Phoenix', price: '$520,000', bed: 3, bath: 2, status: 'Showing' },
   { address: '234 Desert View Dr, Tempe', price: '$389,000', bed: 2, bath: 2, status: 'Active' },
 ]
 
-export default function BeforeScreen() {
+function scoreColor(s: number) {
+  if (s >= 80) return '#2563EB'
+  if (s >= 60) return '#059669'
+  if (s >= 45) return '#d97706'
+  return '#dc2626'
+}
+
+interface BeforeScreenProps {
+  leads?: any[]
+  transactions?: any[]
+  listings?: any[]
+  tasks?: any[]
+  appointments?: any[]
+}
+
+export default function BeforeScreen({ leads: leadsDb, transactions: txDb, listings: listingsDb, tasks: tasksDb, appointments: apptDb }: BeforeScreenProps) {
+  const leads = leadsDb && leadsDb.length > 0
+    ? leadsDb.map((l: any) => ({ name: l.name, score: l.score, color: scoreColor(l.score) }))
+    : LEADS_DEFAULT
+
+  const transactions = txDb && txDb.length > 0
+    ? txDb.map((t: any) => ({
+        name: t.name,
+        stage: t.stage,
+        deadline: (t.deadline as string).split(',')[0],
+        amount: `$${Math.round(t.value / 1000)}K`,
+        alert: t.urgency === 'critical',
+      }))
+    : TRANSACTIONS_DEFAULT
+
+  const listings = listingsDb && listingsDb.length > 0
+    ? listingsDb.map((l: any) => ({
+        address: l.address,
+        price: `$${l.price.toLocaleString()}`,
+        bed: l.beds,
+        bath: l.baths,
+        status: l.status,
+      }))
+    : LISTINGS_DEFAULT
+
+  const totalLeads = leadsDb && leadsDb.length > 0 ? leadsDb.length : 23
+  const untouchedLeads = leadsDb && leadsDb.length > 0 ? leadsDb.filter((l: any) => l.status === 'Cold').length : 12
+
+  const taskCounts = tasksDb && tasksDb.length > 0
+    ? {
+        Call: tasksDb.filter((t: any) => t.type === 'Call').length,
+        Text: tasksDb.filter((t: any) => t.type === 'Text').length,
+        Email: tasksDb.filter((t: any) => t.type === 'Email').length,
+        Other: tasksDb.filter((t: any) => t.type === 'Other').length,
+      }
+    : { Call: 4, Text: 2, Email: 1, Other: 3 }
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[#f3f4f8]">
       {/* Lofty-style top nav (minimal mimic) */}
@@ -135,9 +186,9 @@ export default function BeforeScreen() {
             <div className="bg-white rounded-md border border-ink-200 p-3 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[10.5px] font-bold text-ink-700 uppercase tracking-wider2">Today&apos;s New Leads</h3>
-                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-pill font-semibold">23 total</span>
+                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-pill font-semibold">{totalLeads} total</span>
               </div>
-              <div className="text-[10.5px] text-amber-600 mb-1.5 font-semibold">⚠ 12 untouched</div>
+              {untouchedLeads > 0 && <div className="text-[10.5px] text-amber-600 mb-1.5 font-semibold">⚠ {untouchedLeads} untouched</div>}
               <div className="space-y-1.5">
                 {leads.map((lead) => (
                   <div key={lead.name} className="flex items-center justify-between">
@@ -225,10 +276,10 @@ export default function BeforeScreen() {
               <h3 className="text-[10.5px] font-bold text-ink-700 uppercase tracking-wider2 mb-2">Today&apos;s Tasks</h3>
               <div className="grid grid-cols-2 gap-1.5">
                 {[
-                  { label: 'Call', count: 4, Icon: PhoneIcon, color: 'blue' },
-                  { label: 'Text', count: 2, Icon: ChatCircleIcon, color: 'emerald' },
-                  { label: 'Email', count: 1, Icon: EnvelopeIcon, color: 'indigo' },
-                  { label: 'Other', count: 3, Icon: ClipboardTextIcon, color: 'orange' },
+                  { label: 'Call', count: taskCounts.Call, Icon: PhoneIcon, color: 'blue' },
+                  { label: 'Text', count: taskCounts.Text, Icon: ChatCircleIcon, color: 'emerald' },
+                  { label: 'Email', count: taskCounts.Email, Icon: EnvelopeIcon, color: 'indigo' },
+                  { label: 'Other', count: taskCounts.Other, Icon: ClipboardTextIcon, color: 'orange' },
                 ].map(({ label, count, Icon, color }) => (
                   <div key={label} className={`flex items-center gap-1.5 p-1.5 rounded-md border bg-${color}-50 border-${color}-100`}>
                     <Icon size={11} weight="regular" className={`text-${color}-700`} />

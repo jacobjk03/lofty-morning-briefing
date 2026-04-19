@@ -133,7 +133,7 @@ export default function AIAssistant() {
                          style={{
                            background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)',
                          }}>
-                      <Sparkles className="w-3 h-3 text-white/90" strokeWidth={2} />
+                      <SparkleIcon size={12} weight="fill" className="text-white/90" />
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="typing-dot" style={{ background: '#22D3EE' }} />

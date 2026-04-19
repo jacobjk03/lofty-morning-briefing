@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 
 const BeforeScreen = dynamic(() => import('./components/BeforeScreen'), { ssr: false })
@@ -21,6 +21,46 @@ const TABS: { id: Screen; label: string }[] = [
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('after')
   const [afterKey, setAfterKey] = useState(0)
+
+  // DB state
+  const [briefing, setBriefing] = useState<any>(null)
+  const [leads, setLeads] = useState<any[]>([])
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([])
+  const [listings, setListings] = useState<any[]>([])
+  const [appointments, setAppointments] = useState<any[]>([])
+
+  useEffect(() => {
+    fetch('/api/briefing')
+      .then(r => r.json())
+      .then(data => setBriefing(data))
+      .catch(() => console.log('briefing fallback'))
+
+    fetch('/api/leads')
+      .then(r => r.json())
+      .then(data => setLeads(data))
+      .catch(() => console.log('leads fallback'))
+
+    fetch('/api/transactions')
+      .then(r => r.json())
+      .then(data => setTransactions(data))
+      .catch(() => console.log('transactions fallback'))
+
+    fetch('/api/tasks')
+      .then(r => r.json())
+      .then(data => setTasks(data))
+      .catch(() => console.log('tasks fallback'))
+
+    fetch('/api/listings')
+      .then(r => r.json())
+      .then(data => setListings(data))
+      .catch(() => console.log('listings fallback'))
+
+    fetch('/api/appointments')
+      .then(r => r.json())
+      .then(data => setAppointments(data))
+      .catch(() => console.log('appointments fallback'))
+  }, [])
 
   const goTo = (s: Screen) => {
     if (s === 'after') setAfterKey((k) => k + 1)
@@ -65,10 +105,10 @@ export default function Home() {
       {/* Screen area */}
       <div className="flex-1 min-h-0 relative">
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'before' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <BeforeScreen />
+          <BeforeScreen leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'after' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <AfterScreen key={afterKey} onViewLead={() => goTo('lead')} onOpenChat={() => goTo('chat')} />
+          <AfterScreen key={afterKey} onViewLead={() => goTo('lead')} onOpenChat={() => goTo('chat')} briefingData={briefing} leads={leads} />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'lead' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <LeadDetail onBack={() => goTo('after')} />
