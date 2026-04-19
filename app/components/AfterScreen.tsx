@@ -285,6 +285,7 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
             )}
           </AnimatePresence>
 
+
           {/* Controls / footer */}
           <AnimatePresence mode="wait">
             {phase === 'complete' ? (

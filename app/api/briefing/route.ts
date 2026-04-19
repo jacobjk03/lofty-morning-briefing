@@ -1,13 +1,14 @@
-import { getHotLeads, getCriticalTransactions, getPausedSmartPlans, getCRMSummary } from '@/lib/queries'
+import { getHotLeads, getCriticalTransactions, getSmartPlans, getCRMSummary } from '@/lib/getData'
 import { Lead, Transaction } from '@/lib/types'
 
 type Plan = { name: string; status: string; issue: string; affectedLeads: string[]; last_run: string }
+type Summary = { totalLeads: number; hotLeads: number; warmLeads: number; taskCount: number }
 
 function buildDbFallback(
   hotLeads: Lead[],
   criticalTxns: Transaction[],
   pausedPlans: Plan[],
-  summary: ReturnType<typeof getCRMSummary>
+  summary: Summary
 ) {
   const topLead = hotLeads[0]
   const criticalTxn = criticalTxns[0]
@@ -45,10 +46,12 @@ function buildDbFallback(
 }
 
 export async function GET() {
-  const hotLeads = getHotLeads() as Lead[]
-  const criticalTxns = getCriticalTransactions() as Transaction[]
-  const pausedPlans = getPausedSmartPlans() as Plan[]
-  const summary = getCRMSummary()
+  const [hotLeads, criticalTxns, pausedPlans, summary] = await Promise.all([
+    getHotLeads() as Promise<Lead[]>,
+    getCriticalTransactions() as Promise<Transaction[]>,
+    getSmartPlans() as Promise<Plan[]>,
+    getCRMSummary(),
+  ])
 
   if (!process.env.GROQ_API_KEY) {
     return Response.json(buildDbFallback(hotLeads, criticalTxns, pausedPlans, summary))

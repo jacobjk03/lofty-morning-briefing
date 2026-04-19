@@ -1,5 +1,4 @@
-import { getAllTransactions } from '@/lib/queries'
-
+import { getTransactions } from '@/lib/getData'
 export async function GET() {
-  return Response.json(getAllTransactions())
+  return Response.json(await getTransactions())
 }

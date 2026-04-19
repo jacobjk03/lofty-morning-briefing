@@ -95,6 +95,44 @@ export default function Home() {
           ))}
         </div>
 
+        <style>{`
+          @keyframes naviaGlow {
+            0%, 100% { text-shadow: 0 0 8px #C4622D, 0 0 16px #C4622D; color: #C4622D; }
+            50% { text-shadow: 0 0 20px #C4622D, 0 0 40px #C4622D, 0 0 60px #C4622D; color: #d4733d; }
+          }
+          @keyframes sparkleSpin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.3); }
+            100% { transform: rotate(360deg) scale(1); }
+          }
+          @keyframes fadeInNav {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .navia-sparkle { display: inline-block; animation: sparkleSpin 3s ease-in-out infinite; color: #C4622D; }
+          .navia-word { animation: naviaGlow 2s ease-in-out infinite; }
+          .navia-word:hover { color: #d4733d !important; }
+          .navia-wrapper { opacity: 0; animation: fadeInNav 0.8s ease-out 0.5s forwards; }
+        `}</style>
+
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
+          <span className="navia-wrapper flex items-center gap-1.5 pointer-events-auto">
+            <span className="navia-sparkle" style={{ fontSize: 13 }}>✦</span>
+            <span style={{ fontSize: 15, color: '#1e2a4a', fontWeight: 500, borderLeft: '2px solid #C4622D', paddingLeft: 8 }}>
+              from the team behind{' '}
+              <a
+                href="https://joinnavia.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="navia-word hover:underline"
+                style={{ fontSize: 17, fontWeight: 800, textDecoration: 'none' }}
+              >
+                Navia
+              </a>
+            </span>
+          </span>
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           <span className="hidden md:inline text-[10px] text-ink-400 font-medium tracking-tight">
             Reimagining first-experience · ASU ACM
