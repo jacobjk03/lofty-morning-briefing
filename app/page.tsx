@@ -143,7 +143,7 @@ export default function Home() {
       <div className="shrink-0 px-4 md:px-6 pt-4 pb-3">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
           <header
-            className="flex-1 flex items-center justify-between gap-4 rounded-pill bg-white pl-4 pr-2 h-12"
+            className="flex-1 min-w-0 flex items-center justify-between gap-4 rounded-pill bg-white pl-4 pr-2 h-12"
             style={{
               border: '1px solid rgba(15,23,42,0.08)',
               boxShadow: '0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.10)',
@@ -190,39 +190,44 @@ export default function Home() {
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setIntroOpen(true)}
-                className="hidden sm:inline-flex items-center h-8 px-3 rounded-pill text-[11.5px] font-semibold tracking-tight text-ink-600 hover:text-ink-900 hover:bg-ink-50 transition-all"
+                className="hidden lg:inline-flex items-center h-8 px-3 rounded-pill text-[11.5px] font-semibold tracking-tight text-ink-600 hover:text-ink-900 hover:bg-ink-50 transition-all"
                 title="Replay the intro story"
               >
                 Replay intro
               </button>
 
-              {/* Unlock — judges & teammates enter the demo password here
-                  before burning a call; visitors see it as a hint that BYOK
-                  is available. */}
+              {/* Unlock — icon-only so it never crowds Add lead / Navia.
+                  Judges + teammates paste the demo password here before
+                  burning a call. Visible at sm+ (stays out of the way on
+                  mobile where the Add-lead pill is already tight). */}
               <button
                 onClick={() => openByokModal('admin')}
-                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-pill text-[11.5px] font-semibold tracking-tight transition-all"
+                className="hidden sm:inline-flex items-center justify-center w-8 h-8 rounded-pill transition-all active:scale-[0.95] hover:brightness-[1.03]"
                 title={
                   credsStatus === 'admin'
                     ? 'Demo password saved — click to change'
                     : credsStatus === 'byok'
                       ? 'Your own API keys saved — click to change'
-                      : 'Paste a demo password to skip the 1-call limit'
+                      : 'Paste the demo password to skip the 1-call limit'
                 }
+                aria-label="Unlock Lofty Atlas"
                 style={
                   credsStatus === 'none'
-                    ? { background: 'transparent', color: 'rgb(71,85,105)', border: '1px solid rgba(15,23,42,0.10)' }
+                    ? {
+                        background: 'transparent',
+                        color: 'rgb(71,85,105)',
+                        border: '1px solid rgba(15,23,42,0.10)',
+                      }
                     : {
-                        background: 'rgba(37,99,235,0.08)',
+                        background: 'rgba(37,99,235,0.10)',
                         color: '#1D4ED8',
-                        border: '1px solid rgba(37,99,235,0.18)',
+                        border: '1px solid rgba(37,99,235,0.22)',
                       }
                 }
               >
                 <span style={{ fontSize: 12, lineHeight: 1 }}>
                   {credsStatus === 'none' ? '🔒' : '🔓'}
                 </span>
-                {credsStatus === 'none' ? 'Unlock' : 'Unlocked'}
               </button>
               <button
                 onClick={() => setAddLeadOpen(true)}
