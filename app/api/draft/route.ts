@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  const lead = getLeadById(parseInt(String(leadId ?? '')))
+  const lead = await getLeadById(String(leadId ?? ''))
 
   if (!lead) {
     return Response.json({ error: 'Lead not found' }, { status: 404 })

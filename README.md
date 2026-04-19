@@ -7,16 +7,16 @@
 
 ## What we built
 
-A live Next.js prototype that shows the **before / after** of Lofty's agent experience:
+A live **Next.js 15** prototype: dense “before” CRM → **Lofty AI** morning briefing → lead drill-down, AI chat, and **cloud-backed CRM** (InsForge PostgreSQL) with optional **ElevenLabs** conversational voice on lead call.
 
 | Tab | What it shows |
-|-----|--------------|
-| **Today** | The "before" — real Lofty-style dense dashboard (widgets, setup nag, friction callout) |
-| **Lofty AI** | The "after" — AI orb narrates your morning, surfaces 3 priority action cards, right-hand utility rail |
-| **My Dashboard** | Full CRM widget view, accessible from the Lofty AI greeting for agents who want it |
-| **Lead detail** | Scott Hayes profile: score ring meter, breakdown by signal, quick actions, AI draft SMS |
-| **Conversation** | Live chat powered by Groq (llama-3.3-70b) with full CRM context injected |
-| **Pitch** | Problem statement, before/after comparison table, success metrics — for judges |
+|-----|----------------|
+| **Before** | Dense Lofty-style dashboard (widgets, friction, setup cues) |
+| **After** | Full-screen “after” dashboard variant |
+| **Lofty AI** | AI orb + morning priorities, action cards, utility rail |
+| **Lead detail** | Scott-style lead: score ring, signal breakdown, quick actions, AI draft SMS, **voice call** (ElevenLabs ConvAI) |
+| **AI Agents** | Agent tooling / navigation |
+| **Conversation** | Live chat with CRM context (Groq) |
 
 ---
 
@@ -25,13 +25,13 @@ A live Next.js prototype that shows the **before / after** of Lofty's agent expe
 ```bash
 npm install
 cp .env.local.example .env.local
-# Fill in your Groq API key (see Environment section below)
+# Fill in all keys in .env.local (Groq, ElevenLabs, InsForge — see Environment)
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Use **one** dev server so env vars and port stay consistent (default **:3000**).
 
-If you get stale build errors after a dependency change, run:
+If the build acts stale after dependency or env changes:
 
 ```bash
 rm -rf .next && npm run dev
@@ -41,52 +41,49 @@ rm -rf .next && npm run dev
 
 ## Environment
 
-```bash
-# .env.local
-GROQ_API_KEY=your_groq_key_here
-```
+Create `.env.local` from `.env.local.example`. Typical variables:
 
-| Variable | Required | Used by |
-|----------|----------|---------|
-| `GROQ_API_KEY` | Yes* | `/api/chat` (Conversation tab) · `/api/briefing` (AI morning summary) · `/api/draft` (DraftModal personalized messages) |
+| Variable | Purpose |
+|----------|---------|
+| `GROQ_API_KEY` | Briefing, chat, draft generation |
+| `ELEVENLABS_API_KEY` | ElevenLabs API (TTS / agents) |
+| `ELEVENLABS_VOICE_ID` | Voice for `/api/speak` (non–ConvAI paths) |
+| `ELEVENLABS_AGENT_ID` | ConvAI agent (server) |
+| `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` | Same agent id for in-browser WebRTC (public agent) |
+| `INSFORGE_URL` | InsForge app base URL |
+| `INSFORGE_API_KEY` | InsForge project API key |
 
-\* The UI loads and all tabs work without it. The Conversation tab and AI Draft feature show an inline error message if the key is missing or invalid.
-
-Get a free key at [console.groq.com](https://console.groq.com).
-
----
-
-## Scripts
-
-```bash
-npm run dev      # development server (hot reload)
-npm run build    # production build
-npm start        # run production server (requires build first)
-```
+Groq: [console.groq.com](https://console.groq.com). Without `GROQ_API_KEY`, briefing/chat/draft use sensible fallbacks where implemented.
 
 ---
 
 ## Data layer
 
-The app seeds a local **SQLite database** (`crm.db`) on first run via `lib/db.ts`. All CRM data — leads, transactions, tasks, listings, appointments — is read from this DB through the API routes. Hardcoded fallbacks exist in every component so the UI still works if the DB or an API call fails.
+CRM data lives in **InsForge (PostgreSQL)** via `@insforge/sdk` (`lib/insforge.ts`, `lib/queries.ts`). API routes read leads, transactions, tasks, listings, appointments, and smart plans from the cloud.
 
-`crm.db` is gitignored; it is re-created automatically on every fresh `npm run dev`.
+`lib/getData.ts` uses InsForge first and falls back to **`mockFallback`** only if a query fails, so the UI stays demo-able offline.
+
+Voice calls log to InsForge **`call_logs`** (duration, transcript payload) through **`POST /api/log-call`**.
 
 ---
 
-## API routes
+## API routes (selected)
 
 | Route | Method | Returns |
 |-------|--------|---------|
-| `/api/briefing` | GET | AI-generated morning summary (Groq) |
-| `/api/leads` | GET | All leads with scores and activity |
-| `/api/leads/[id]` | GET | Single lead by ID |
-| `/api/transactions` | GET | Active transactions |
-| `/api/tasks` | GET | Today's tasks |
-| `/api/listings` | GET | Agent's listings |
-| `/api/appointments` | GET | Upcoming appointments/showings |
-| `/api/chat` | POST | Streaming chat with CRM context (Groq) |
-| `/api/draft` | POST | AI-personalized draft message for a lead (Groq) |
+| `/api/briefing` | GET | Morning summary (Groq + CRM context) |
+| `/api/leads` | GET | All leads |
+| `/api/leads/[id]` | GET | Single lead (UUID or legacy index `1` = top by score) |
+| `/api/transactions` | GET | Transactions |
+| `/api/tasks` | GET | Tasks |
+| `/api/listings` | GET | Listings |
+| `/api/appointments` | GET | Appointments |
+| `/api/chat` | POST | Streaming chat (Groq) |
+| `/api/draft` | POST | Draft message for a lead (Groq) |
+| `/api/log-call` | POST | Persist call metadata + transcript to InsForge |
+| `/api/elevenlabs-token` | GET | Short-lived ConvAI token (optional; agent id path also used) |
+| `/api/extract-lead` | POST | Lead extraction helper |
+| `/api/smart-plan` | POST | Smart plan actions |
 
 ---
 
@@ -95,49 +92,38 @@ The app seeds a local **SQLite database** (`crm.db`) on first run via `lib/db.ts
 | Layer | Tech |
 |-------|------|
 | Framework | Next.js 15 (App Router), React 18, TypeScript |
-| Styling | Tailwind CSS (custom `ink` color scale, `pill` radius) |
+| Styling | Tailwind CSS |
 | Animation | Framer Motion |
 | Icons | Phosphor Icons |
-| Database | better-sqlite3 (local SQLite, seeded on startup) |
-| AI | Groq API — `llama-3.3-70b-versatile` |
+| Database | **InsForge** — PostgreSQL + REST-style SDK |
+| AI | Groq (`llama-3.3-70b-versatile`) · **ElevenLabs** ConvAI + `@elevenlabs/react` for voice |
 
 ---
 
-## Project layout
+## Scripts
+
+```bash
+npm run dev      # development server
+npm run build    # production build (run before release)
+npm start        # production server (after build)
+```
+
+---
+
+## Project layout (abbreviated)
 
 ```
 app/
-  page.tsx                  # Tab shell, screen routing, DB data fetching
-  globals.css               # Base styles, canvas-dark class, animations
-  components/
-    AfterScreen.tsx         # Lofty AI morning briefing (orb + cards + rail)
-    BeforeScreen.tsx        # Dense CRM dashboard ("Today" / "My Dashboard")
-    LeadDetail.tsx          # Lead profile, score ring, quick actions, draft SMS
-    AIAssistant.tsx         # Conversation chat UI
-    PitchMode.tsx           # Judge-facing pitch slide
-    ActionCard.tsx          # Priority action card (used in AfterScreen)
-    CaptionStrip.tsx        # Typewriter caption for briefing narration
-    LoftyUtilityRail.tsx    # Right-side icon rail (AI, Dialer, Messages, etc.)
-    Orb.tsx                 # Animated SVG orb (thinking / speaking / done states)
-    DraftModal.tsx          # AI-personalized draft message modal
-    NavBar.tsx              # Top nav bar (Lofty-style, used in BeforeScreen)
-    Toast.tsx               # Ephemeral action confirmation toast
-  api/
-    briefing/route.ts       # AI morning summary
-    leads/route.ts          # Lead list
-    leads/[id]/route.ts     # Single lead
-    transactions/route.ts   # Transactions
-    tasks/route.ts          # Tasks
-    listings/route.ts       # Listings
-    appointments/route.ts   # Appointments
-    chat/route.ts           # Groq chat
-    draft/route.ts          # Groq draft
-  hooks/
-    useVoice.ts             # Web Speech API hook for voice narration
+  page.tsx              # Tab shell, data fetch, screen routing
+  components/           # Before/After/LeadDetail, AIAssistant, modals, CallOverlay, …
+  api/                  # briefing, leads, chat, draft, log-call, …
 lib/
-  db.ts                     # SQLite seed + connection
-  queries.ts                # All DB query functions
-  types.ts                  # Shared TypeScript types
+  insforge.ts           # InsForge SDK client
+  queries.ts            # CRM queries (InsForge)
+  getData.ts            # Loaders + mock fallback
+  mockFallback.ts       # Offline/demo fallback data
+  types.ts
+docs/                   # Local-only (gitignored): teammate notes, assets — share out of band if needed
 ```
 
 ---

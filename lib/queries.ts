@@ -1,60 +1,180 @@
-import db from './db'
+import insforge from './insforge'
 
-export function getAllLeads() {
-  const leads = db.prepare('SELECT * FROM leads ORDER BY score DESC').all() as any[]
-  return leads.map(l => ({ ...l, activity: JSON.parse(l.activity || '[]') }))
+// InsForge returns JSONB columns as parsed objects, not strings.
+// IDs are UUIDs (string). completed is boolean.
+
+// Loose UUID v1–v5 shape (Postgres accepts standard hex hyphenated form)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function mapLeadRow(l: any) {
+  return {
+    ...l,
+    activity: Array.isArray(l.activity) ? l.activity : [],
+  }
 }
 
-export function getHotLeads() {
-  const leads = db.prepare("SELECT * FROM leads WHERE status = 'Hot' ORDER BY score DESC").all() as any[]
-  return leads.map(l => ({ ...l, activity: JSON.parse(l.activity || '[]') }))
+export async function getAllLeads() {
+  const { data, error } = await insforge.database
+    .from('leads')
+    .select()
+    .order('score', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(mapLeadRow)
 }
 
-export function getLeadById(id: number) {
-  const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id) as any
-  if (!lead) return null
-  return { ...lead, activity: JSON.parse(lead.activity || '[]') }
+export async function getHotLeads() {
+  const { data, error } = await insforge.database
+    .from('leads')
+    .select()
+    .eq('status', 'Hot')
+    .order('score', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(mapLeadRow)
 }
 
-export function getCriticalTransactions() {
-  const txns = db.prepare("SELECT * FROM transactions WHERE urgency IN ('critical', 'high') ORDER BY hours_until_deadline ASC").all() as any[]
-  return txns.map(t => ({ ...t, openIssues: JSON.parse(t.open_issues || '[]') }))
+/**
+ * Resolve a lead by InsForge UUID, or by legacy 1-based index (same order as list: score DESC).
+ * Old UI uses /api/leads/1 for "top lead" — that is not a valid UUID in Postgres.
+ */
+export async function getLeadById(id: string) {
+  const trimmed = (id ?? '').trim()
+  if (!trimmed) return null
+
+  if (UUID_RE.test(trimmed)) {
+    const { data, error } = await insforge.database
+      .from('leads')
+      .select()
+      .eq('id', trimmed)
+      .maybeSingle()
+    if (error) throw error
+    return data ? mapLeadRow(data) : null
+  }
+
+  const n = parseInt(trimmed, 10)
+  if (!Number.isNaN(n) && n >= 1) {
+    const { data, error } = await insforge.database
+      .from('leads')
+      .select()
+      .order('score', { ascending: false })
+    if (error) throw error
+    const rows = data ?? []
+    const row = rows[n - 1]
+    return row ? mapLeadRow(row) : null
+  }
+
+  return null
 }
 
-export function getAllTransactions() {
-  const txns = db.prepare('SELECT * FROM transactions ORDER BY hours_until_deadline ASC').all() as any[]
-  return txns.map(t => ({ ...t, openIssues: JSON.parse(t.open_issues || '[]') }))
+export async function getCriticalTransactions() {
+  const { data, error } = await insforge.database
+    .from('transactions')
+    .select()
+    .in('urgency', ['critical', 'high'])
+    .order('hours_until_deadline', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((t: any) => ({
+    ...t,
+    openIssues: Array.isArray(t.open_issues) ? t.open_issues : [],
+  }))
 }
 
-export function getTasksByType() {
-  return db.prepare('SELECT type, COUNT(*) as count FROM tasks WHERE completed = 0 GROUP BY type').all()
+export async function getAllTransactions() {
+  const { data, error } = await insforge.database
+    .from('transactions')
+    .select()
+    .order('hours_until_deadline', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((t: any) => ({
+    ...t,
+    openIssues: Array.isArray(t.open_issues) ? t.open_issues : [],
+  }))
 }
 
-export function getAllTasks() {
-  return db.prepare('SELECT * FROM tasks WHERE completed = 0 ORDER BY priority DESC').all()
+export async function getTasksByType() {
+  const { data, error } = await insforge.database
+    .from('tasks')
+    .select()
+    .eq('completed', false)
+  if (error) throw error
+  const counts: Record<string, number> = {}
+  for (const t of data ?? []) {
+    counts[t.type] = (counts[t.type] ?? 0) + 1
+  }
+  return Object.entries(counts).map(([type, count]) => ({ type, count }))
 }
 
-export function getAllListings() {
-  return db.prepare('SELECT * FROM listings').all()
+export async function getAllTasks() {
+  const { data, error } = await insforge.database
+    .from('tasks')
+    .select()
+    .eq('completed', false)
+    .order('priority', { ascending: false })
+  if (error) throw error
+  return data ?? []
 }
 
-export function getPausedSmartPlans() {
-  const plans = db.prepare("SELECT * FROM smart_plans WHERE status = 'Paused'").all() as any[]
-  return plans.map(p => ({ ...p, affectedLeads: JSON.parse(p.affected_leads || '[]') }))
+export async function getAllListings() {
+  const { data, error } = await insforge.database.from('listings').select()
+  if (error) throw error
+  return data ?? []
 }
 
-export function getAllAppointments() {
-  return db.prepare('SELECT * FROM appointments ORDER BY time ASC').all()
+export async function getPausedSmartPlans() {
+  const { data, error } = await insforge.database
+    .from('smart_plans')
+    .select()
+    .eq('status', 'Paused')
+  if (error) throw error
+  return (data ?? []).map((p: any) => ({
+    ...p,
+    affectedLeads: Array.isArray(p.affected_leads) ? p.affected_leads : [],
+  }))
 }
 
-export function getCRMSummary() {
-  const totalLeads = (db.prepare('SELECT COUNT(*) as count FROM leads').get() as any).count
-  const hotLeads = (db.prepare("SELECT COUNT(*) as count FROM leads WHERE status = 'Hot'").get() as any).count
-  const warmLeads = (db.prepare("SELECT COUNT(*) as count FROM leads WHERE status = 'Warm'").get() as any).count
-  const highScore = (db.prepare('SELECT COUNT(*) as count FROM leads WHERE score >= 70').get() as any).count
-  const criticalTxns = (db.prepare("SELECT COUNT(*) as count FROM transactions WHERE urgency = 'critical'").get() as any).count
-  const pausedPlans = (db.prepare("SELECT COUNT(*) as count FROM smart_plans WHERE status = 'Paused'").get() as any).count
-  const taskCount = (db.prepare('SELECT COUNT(*) as count FROM tasks WHERE completed = 0').get() as any).count
+export async function getAllAppointments() {
+  const { data, error } = await insforge.database
+    .from('appointments')
+    .select()
+    .order('time', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
 
-  return { totalLeads, hotLeads, warmLeads, highScore, criticalTxns, pausedPlans, taskCount }
+export async function getCRMSummary() {
+  const [leadsRes, hotRes, warmRes, critRes, pausedRes, taskRes] = await Promise.all([
+    insforge.database.from('leads').select('id', { count: 'exact', head: true }),
+    insforge.database.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'Hot'),
+    insforge.database.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'Warm'),
+    insforge.database.from('transactions').select('id', { count: 'exact', head: true }).eq('urgency', 'critical'),
+    insforge.database.from('smart_plans').select('id', { count: 'exact', head: true }).eq('status', 'Paused'),
+    insforge.database.from('tasks').select('id', { count: 'exact', head: true }).eq('completed', false),
+  ])
+  return {
+    totalLeads: leadsRes.count ?? 0,
+    hotLeads: hotRes.count ?? 0,
+    warmLeads: warmRes.count ?? 0,
+    highScore: hotRes.count ?? 0,
+    criticalTxns: critRes.count ?? 0,
+    pausedPlans: pausedRes.count ?? 0,
+    taskCount: taskRes.count ?? 0,
+  }
+}
+
+export async function logCallToInsForge(
+  leadName: string,
+  leadId: string | null,
+  durationSeconds: number,
+  notes?: string,
+  transcript?: Array<{ speaker: 'agent' | 'user'; text: string; time: number }> | null
+) {
+  const { error } = await insforge.database
+    .from('call_logs')
+    .insert([{
+      lead_name: leadName,
+      lead_id: leadId,
+      duration_seconds: durationSeconds,
+      notes: notes ?? null,
+      transcript: transcript && transcript.length > 0 ? transcript : null,
+    }])
+  if (error) console.error('[InsForge] Failed to log call:', error)
 }

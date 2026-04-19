@@ -1,125 +1,112 @@
-const isVercel = process.env.VERCEL === '1'
+// All data now comes from InsForge PostgreSQL.
+// mockFallback is kept only as an emergency last-resort if InsForge is unreachable.
+
+import {
+  getAllLeads,
+  getHotLeads as getHotLeadsQuery,
+  getLeadById as getLeadByIdQuery,
+  getAllTransactions,
+  getCriticalTransactions as getCriticalTxnsQuery,
+  getAllTasks,
+  getAllListings,
+  getPausedSmartPlans,
+  getAllAppointments,
+  getCRMSummary as getCRMSummaryQuery,
+} from './queries'
+
+async function withFallback<T>(fn: () => Promise<T>, fallbackFn: () => T): Promise<T> {
+  try {
+    return await fn()
+  } catch (e) {
+    console.warn('[getData] InsForge query failed, using mock fallback:', e)
+    return fallbackFn()
+  }
+}
 
 export async function getLeads() {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
+  return withFallback(getAllLeads, () => {
+    const { mockFallback } = require('./mockFallback')
     return mockFallback.leads.map((l: any) => ({ ...l, activity: JSON.parse(l.activity || '[]') }))
-  }
-  try {
-    const { getAllLeads } = await import('./queries')
-    return getAllLeads()
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.leads.map((l: any) => ({ ...l, activity: JSON.parse(l.activity || '[]') }))
-  }
-}
-
-export async function getTransactions() {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.transactions.map((t: any) => ({ ...t, openIssues: JSON.parse(t.open_issues || '[]') }))
-  }
-  try {
-    const { getAllTransactions } = await import('./queries')
-    return getAllTransactions()
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.transactions.map((t: any) => ({ ...t, openIssues: JSON.parse(t.open_issues || '[]') }))
-  }
-}
-
-export async function getTasks() {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.tasks
-  }
-  try {
-    const { getAllTasks } = await import('./queries')
-    return getAllTasks()
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.tasks
-  }
-}
-
-export async function getListings() {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.listings
-  }
-  try {
-    const { getAllListings } = await import('./queries')
-    return getAllListings()
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.listings
-  }
-}
-
-export async function getSmartPlans() {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.smartPlans.map((p: any) => ({ ...p, affectedLeads: JSON.parse(p.affected_leads || '[]') }))
-  }
-  try {
-    const { getPausedSmartPlans } = await import('./queries')
-    return getPausedSmartPlans()
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.smartPlans.map((p: any) => ({ ...p, affectedLeads: JSON.parse(p.affected_leads || '[]') }))
-  }
-}
-
-export async function getAppointments() {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.appointments
-  }
-  try {
-    const { getAllAppointments } = await import('./queries')
-    return getAllAppointments()
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    return mockFallback.appointments
-  }
-}
-
-export async function getLeadById(id: number) {
-  if (isVercel) {
-    const { mockFallback } = await import('./mockFallback')
-    const lead = mockFallback.leads.find((l: any) => l.id === id)
-    if (!lead) return null
-    return { ...lead, activity: JSON.parse(lead.activity || '[]') }
-  }
-  try {
-    const { getLeadById: getById } = await import('./queries')
-    return getById(id)
-  } catch {
-    const { mockFallback } = await import('./mockFallback')
-    const lead = mockFallback.leads.find((l: any) => l.id === id)
-    if (!lead) return null
-    return { ...lead, activity: JSON.parse(lead.activity || '[]') }
-  }
+  })
 }
 
 export async function getHotLeads() {
-  const leads = await getLeads()
-  return (leads as any[]).filter((l) => l.score >= 80 || l.status === 'Hot')
+  return withFallback(getHotLeadsQuery, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.leads
+      .filter((l: any) => l.status === 'Hot')
+      .map((l: any) => ({ ...l, activity: JSON.parse(l.activity || '[]') }))
+  })
+}
+
+export async function getLeadById(id: string) {
+  return withFallback(
+    () => getLeadByIdQuery(id),
+    () => {
+      const { mockFallback } = require('./mockFallback')
+      const lead = mockFallback.leads.find((l: any) => String(l.id) === String(id))
+      if (!lead) return null
+      return { ...lead, activity: JSON.parse(lead.activity || '[]') }
+    }
+  )
+}
+
+export async function getTransactions() {
+  return withFallback(getAllTransactions, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.transactions.map((t: any) => ({ ...t, openIssues: JSON.parse(t.open_issues || '[]') }))
+  })
 }
 
 export async function getCriticalTransactions() {
-  const txns = await getTransactions()
-  return (txns as any[]).filter((t) => t.urgency === 'critical' || t.hours_until_deadline <= 96)
+  return withFallback(getCriticalTxnsQuery, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.transactions
+      .filter((t: any) => t.urgency === 'critical' || t.hours_until_deadline <= 96)
+      .map((t: any) => ({ ...t, openIssues: JSON.parse(t.open_issues || '[]') }))
+  })
+}
+
+export async function getTasks() {
+  return withFallback(getAllTasks, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.tasks
+  })
+}
+
+export async function getListings() {
+  return withFallback(getAllListings, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.listings
+  })
+}
+
+export async function getSmartPlans() {
+  return withFallback(getPausedSmartPlans, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.smartPlans.map((p: any) => ({
+      ...p,
+      affectedLeads: JSON.parse(p.affected_leads || '[]'),
+    }))
+  })
+}
+
+export async function getAppointments() {
+  return withFallback(getAllAppointments, () => {
+    const { mockFallback } = require('./mockFallback')
+    return mockFallback.appointments
+  })
 }
 
 export async function getCRMSummary() {
-  const [leads, tasks] = await Promise.all([getLeads(), getTasks()])
-  const leadsArr = leads as any[]
-  const tasksArr = tasks as any[]
-  return {
-    totalLeads: leadsArr.length,
-    hotLeads: leadsArr.filter((l) => l.score >= 80 || l.status === 'Hot').length,
-    warmLeads: leadsArr.filter((l) => l.status === 'Warm').length,
-    taskCount: tasksArr.length,
-  }
+  return withFallback(getCRMSummaryQuery, () => {
+    const { mockFallback } = require('./mockFallback')
+    const leads = mockFallback.leads
+    return {
+      totalLeads: leads.length,
+      hotLeads: leads.filter((l: any) => l.status === 'Hot').length,
+      warmLeads: leads.filter((l: any) => l.status === 'Warm').length,
+      taskCount: mockFallback.tasks.length,
+    }
+  })
 }

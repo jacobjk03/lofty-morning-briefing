@@ -4,6 +4,22 @@ node_modules/
 .env*.local
 *.log
 .DS_Store
+# All of docs/ stays local (teammate notes, hackathon PDFs, etc.) — not pushed
 docs/
 crm.db
 tsconfig.tsbuildinfo
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf

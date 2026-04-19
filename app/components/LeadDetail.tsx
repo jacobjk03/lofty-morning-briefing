@@ -104,13 +104,17 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
   const [contacted, setContacted] = useState(false)
   const [messageSent, setMessageSent] = useState(false)
   const [showCall, setShowCall] = useState(false)
+  /** InsForge UUID for this lead — used for CRM call_logs + avoids legacy id mismatch */
+  const [leadUuid, setLeadUuid] = useState<string | null>(null)
   const voice = useVoice()
 
   useEffect(() => {
+    // "1" = top lead by score (same as old SQLite id=1 for Scott)
     fetch('/api/leads/1')
       .then(r => r.json())
       .then((data: any) => {
         if (!data) return
+        if (data.id) setLeadUuid(String(data.id))
         setLeadName(data.name || 'Scott Hayes')
         setLeadScore(data.score ?? 92)
         setNeighborhood(data.neighborhood || 'Phoenix, AZ')
@@ -552,6 +556,7 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
           <CallOverlay
             name={leadName}
             initials={initials}
+            leadId={leadUuid ?? undefined}
             onEnd={(secs) => {
               setShowCall(false)
               setContacted(true)

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   PhoneSlashIcon,
@@ -10,16 +10,51 @@ import {
   GridNineIcon,
   UserPlusIcon,
   PhoneIcon,
+  WaveformIcon,
 } from '@phosphor-icons/react'
+import { ConversationProvider, useConversation } from '@elevenlabs/react'
+
+interface TranscriptLine {
+  speaker: 'agent' | 'user'
+  text: string
+  time: number
+}
 
 interface CallOverlayProps {
   name: string
   phone?: string
   initials: string
+  leadId?: string
   onEnd: (durationSecs: number) => void
 }
 
-type CallPhase = 'dialing' | 'connected'
+export default function CallOverlay(props: CallOverlayProps) {
+  const transcriptRef = useRef<TranscriptLine[]>([])
+  const elapsedRef = useRef(0)
+
+  return (
+    <ConversationProvider
+      onMessage={(msg: { source: string; message: string }) => {
+        if (msg.message?.trim()) {
+          transcriptRef.current.push({
+            speaker: msg.source === 'ai' ? 'agent' : 'user',
+            text: msg.message.trim(),
+            time: elapsedRef.current,
+          })
+        }
+      }}
+    >
+      <CallOverlayInner {...props} transcriptRef={transcriptRef} elapsedRef={elapsedRef} />
+    </ConversationProvider>
+  )
+}
+
+type CallPhase = 'ringing' | 'connecting' | 'connected'
+
+interface InnerProps extends CallOverlayProps {
+  transcriptRef: React.MutableRefObject<TranscriptLine[]>
+  elapsedRef: React.MutableRefObject<number>
+}
 
 function formatTime(secs: number) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0')
@@ -27,34 +62,97 @@ function formatTime(secs: number) {
   return `${m}:${s}`
 }
 
-export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initials, onEnd }: CallOverlayProps) {
-  const [phase, setPhase] = useState<CallPhase>('dialing')
+const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#']
+
+function CallOverlayInner({ name, phone = '+1 (602) 555-0142', initials, leadId, onEnd, transcriptRef, elapsedRef }: InnerProps) {
+  const conversation = useConversation()
+
+  const [phase, setPhase] = useState<CallPhase>('ringing')
   const [elapsed, setElapsed] = useState(0)
   const [muted, setMuted] = useState(false)
-  const [speakerOn, setSpeakerOn] = useState(false)
+  const [speakerOn, setSpeakerOn] = useState(true)
   const [keypadOpen, setKeypadOpen] = useState(false)
   const [keypadInput, setKeypadInput] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
+
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const endingRef = useRef(false)
 
-  // Auto-connect after 1.8s
-  useEffect(() => {
-    const t = setTimeout(() => setPhase('connected'), 1800)
-    return () => clearTimeout(t)
-  }, [])
-
-  // Live call timer
+  // ── Start call timer once connected ──────────────────────────────────────
   useEffect(() => {
     if (phase !== 'connected') return
-    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000)
+    timerRef.current = setInterval(() => {
+      setElapsed(e => {
+        const next = e + 1
+        elapsedRef.current = next
+        return next
+      })
+    }, 1000)
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [phase])
+  }, [phase, elapsedRef])
 
-  const handleEnd = () => {
+  // ── Sync mute to ElevenLabs ───────────────────────────────────────────────
+  useEffect(() => {
+    if (conversation.status === 'connected') {
+      conversation.setMuted(muted)
+    }
+  }, [muted, conversation])
+
+  // ── Speaker volume ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (conversation.status === 'connected') {
+      conversation.setVolume({ volume: speakerOn ? 1 : 0.15 })
+    }
+  }, [speakerOn, conversation])
+
+  // ── Answer button — THIS is the user gesture that unlocks audio ──────────
+  const handleAnswer = useCallback(async () => {
+    const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID
+    if (!agentId) {
+      setErrorMsg('Agent ID not configured')
+      setPhase('connected')
+      return
+    }
+    setPhase('connecting')
+    try {
+      // startSession called directly from a click handler = browser allows audio
+      await conversation.startSession({ agentId })
+      setPhase('connected')
+    } catch (err) {
+      console.error('[CallOverlay] startSession error:', err)
+      setErrorMsg('Live AI unavailable — demo mode')
+      setPhase('connected')
+    }
+  }, [conversation])
+
+  // ── End call ─────────────────────────────────────────────────────────────
+  const handleEnd = useCallback(async () => {
+    if (endingRef.current) return
+    endingRef.current = true
     if (timerRef.current) clearInterval(timerRef.current)
-    onEnd(elapsed)
-  }
+    if (conversation.status === 'connected') {
+      try { await conversation.endSession() } catch { /* ignore */ }
+    }
+    const mins = Math.floor(elapsed / 60)
+    const secs = elapsed % 60
+    const durationLabel = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    // Log to InsForge — fire-and-forget
+    fetch('/api/log-call', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leadName: name,
+        leadId: leadId ?? null,
+        durationSeconds: elapsed,
+        notes: `Call duration: ${durationLabel}`,
+        transcript: transcriptRef.current,
+      }),
+    }).catch(e => console.warn('[CallOverlay] Failed to log call:', e))
 
-  const KEYPAD = ['1','2','3','4','5','6','7','8','9','*','0','#']
+    onEnd(elapsed)
+  }, [conversation, elapsed, leadId, name, onEnd, transcriptRef])
+
+  const agentSpeaking = conversation.isSpeaking ?? false
 
   return (
     <motion.div
@@ -78,16 +176,23 @@ export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initial
           paddingBottom: 36,
         }}
       >
-        {/* Top status pill */}
+        {/* Status pill */}
         <div className="mt-8 mb-6">
-          {phase === 'dialing' ? (
-            <div className="inline-flex items-center gap-2 px-4 h-7 rounded-pill bg-white/8 border border-white/10 text-[11px] font-semibold text-white/60 tracking-widest uppercase">
-              <span className="w-1.5 h-1.5 rounded-pill bg-amber-400 animate-pulse" />
-              Dialing…
+          {phase === 'ringing' && (
+            <div className="inline-flex items-center gap-2 px-4 h-7 rounded-full bg-white/8 border border-white/10 text-[11px] font-semibold text-white/60 tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              Incoming call…
             </div>
-          ) : (
-            <div className="inline-flex items-center gap-2 px-4 h-7 rounded-pill bg-emerald-500/15 border border-emerald-400/25 text-[11px] font-semibold text-emerald-300 tracking-widest uppercase">
-              <span className="w-1.5 h-1.5 rounded-pill bg-emerald-400" />
+          )}
+          {phase === 'connecting' && (
+            <div className="inline-flex items-center gap-2 px-4 h-7 rounded-full bg-blue-500/15 border border-blue-400/25 text-[11px] font-semibold text-blue-300 tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              Connecting…
+            </div>
+          )}
+          {phase === 'connected' && (
+            <div className="inline-flex items-center gap-2 px-4 h-7 rounded-full bg-emerald-500/15 border border-emerald-400/25 text-[11px] font-semibold text-emerald-300 tracking-widest uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Active call · {formatTime(elapsed)}
             </div>
           )}
@@ -96,9 +201,17 @@ export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initial
         {/* Avatar */}
         <div className="relative mb-5">
           <motion.div
-            animate={phase === 'connected' ? { boxShadow: ['0 0 0 0px rgba(34,197,94,0.3)', '0 0 0 18px rgba(34,197,94,0)', '0 0 0 0px rgba(34,197,94,0)'] } : {}}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
-            className="w-24 h-24 rounded-pill flex items-center justify-center text-white font-headline font-bold text-[34px]"
+            animate={
+              phase === 'ringing'
+                ? { boxShadow: ['0 0 0 0px rgba(251,191,36,0.4)', '0 0 0 22px rgba(251,191,36,0)', '0 0 0 0px rgba(251,191,36,0.4)'] }
+                : phase === 'connected' && agentSpeaking
+                ? { boxShadow: ['0 0 0 0px rgba(34,197,94,0.5)', '0 0 0 22px rgba(34,197,94,0)', '0 0 0 0px rgba(34,197,94,0.5)'] }
+                : phase === 'connected'
+                ? { boxShadow: ['0 0 0 0px rgba(34,197,94,0.2)', '0 0 0 10px rgba(34,197,94,0)', '0 0 0 0px rgba(34,197,94,0.2)'] }
+                : {}
+            }
+            transition={{ duration: phase === 'ringing' ? 1.4 : agentSpeaking ? 1.0 : 2.5, repeat: Infinity, ease: 'easeOut' }}
+            className="w-24 h-24 rounded-full flex items-center justify-center text-white font-bold text-[34px]"
             style={{
               background: 'linear-gradient(135deg, #2563EB, #1D4ED8 60%, #0B1220)',
               boxShadow: phase === 'connected'
@@ -112,7 +225,7 @@ export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initial
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-pill bg-emerald-500 border-2 border-[#0b1220] flex items-center justify-center"
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-emerald-500 border-2 border-[#0b1220] flex items-center justify-center"
             >
               <PhoneIcon size={12} weight="fill" className="text-white" />
             </motion.div>
@@ -121,9 +234,47 @@ export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initial
 
         {/* Name + number */}
         <h2 className="text-white font-semibold text-[22px] tracking-tighter mb-1">{name}</h2>
-        <p className="text-white/40 text-[13px] font-medium mb-8">{phone}</p>
+        <p className="text-white/40 text-[13px] font-medium mb-2">{phone}</p>
 
-        {/* Keypad (conditionally shown) */}
+        {/* Speaking / listening indicator */}
+        <AnimatePresence mode="wait">
+          {phase === 'connected' && agentSpeaking && (
+            <motion.div key="speaking"
+              initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+              className="flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/20"
+            >
+              <WaveformIcon size={13} className="text-emerald-400" weight="bold" />
+              <span className="text-[11px] font-medium text-emerald-300">Speaking…</span>
+            </motion.div>
+          )}
+          {phase === 'connected' && !agentSpeaking && (
+            <motion.div key="listening"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex items-center gap-1.5 mb-4 px-3 py-1.5 rounded-full bg-white/5 border border-white/8"
+            >
+              <MicrophoneIcon size={13} className="text-white/50" weight="regular" />
+              <span className="text-[11px] font-medium text-white/40">
+                {muted ? 'You are muted' : 'Listening…'}
+              </span>
+            </motion.div>
+          )}
+          {(phase === 'ringing' || phase === 'connecting') && (
+            <motion.div key="idle" className="mb-4 h-[30px]" />
+          )}
+        </AnimatePresence>
+
+        {/* Error badge */}
+        <AnimatePresence>
+          {errorMsg && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="mb-3 text-[10px] text-amber-400/70 font-medium px-4 text-center"
+            >
+              {errorMsg}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Keypad */}
         <AnimatePresence>
           {keypadOpen && (
             <motion.div
@@ -138,13 +289,9 @@ export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initial
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {KEYPAD.map(k => (
-                    <button
-                      key={k}
-                      onClick={() => setKeypadInput(v => v + k)}
+                    <button key={k} onClick={() => setKeypadInput(v => v + k)}
                       className="h-11 rounded-xl bg-white/8 hover:bg-white/15 text-white font-semibold text-[16px] transition-colors active:scale-95"
-                    >
-                      {k}
-                    </button>
+                    >{k}</button>
                   ))}
                 </div>
               </div>
@@ -152,81 +299,115 @@ export default function CallOverlay({ name, phone = '+1 (602) 555-0142', initial
           )}
         </AnimatePresence>
 
-        {/* Control buttons */}
-        <div className="flex items-center gap-5 mb-8">
-          <ControlButton
-            label={muted ? 'Unmute' : 'Mute'}
-            active={muted}
-            onClick={() => setMuted(v => !v)}
-            icon={muted
-              ? <MicrophoneSlashIcon size={20} weight="fill" />
-              : <MicrophoneIcon size={20} weight="regular" />}
-          />
-          <ControlButton
-            label={speakerOn ? 'Speaker on' : 'Speaker'}
-            active={speakerOn}
-            onClick={() => setSpeakerOn(v => !v)}
-            icon={speakerOn
-              ? <SpeakerHighIcon size={20} weight="fill" />
-              : <SpeakerSlashIcon size={20} weight="regular" />}
-          />
-          <ControlButton
-            label="Keypad"
-            active={keypadOpen}
-            onClick={() => setKeypadOpen(v => !v)}
-            icon={<GridNineIcon size={20} weight="regular" />}
-          />
-          <ControlButton
-            label="Add"
-            active={false}
-            onClick={() => {}}
-            icon={<UserPlusIcon size={20} weight="regular" />}
-            disabled
-          />
-        </div>
+        {/* ── RINGING: Answer / Decline buttons ───────────────────────────── */}
+        <AnimatePresence>
+          {phase === 'ringing' && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              className="flex items-center gap-10 mb-4"
+            >
+              {/* Decline */}
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => onEnd(0)}
+                  className="w-16 h-16 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(180deg, #ef4444, #dc2626)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 12px 32px -8px rgba(239,68,68,0.5)',
+                  }}
+                >
+                  <PhoneSlashIcon size={24} weight="fill" className="text-white" />
+                </motion.button>
+                <span className="text-[11px] text-white/30 font-medium">Decline</span>
+              </div>
 
-        {/* End call */}
-        <motion.button
-          whileTap={{ scale: 0.93 }}
-          onClick={handleEnd}
-          className="w-16 h-16 rounded-pill flex items-center justify-center transition-all"
-          style={{
-            background: 'linear-gradient(180deg, #ef4444, #dc2626)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 12px 32px -8px rgba(239,68,68,0.6)',
-          }}
-          aria-label="End call"
-        >
-          <PhoneSlashIcon size={24} weight="fill" className="text-white" />
-        </motion.button>
-        <p className="text-white/25 text-[11px] mt-3 font-medium">End call</p>
+              {/* Answer — this click IS the user gesture for audio */}
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  animate={{ scale: [1, 1.08, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                  onClick={handleAnswer}
+                  className="w-16 h-16 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(180deg, #22c55e, #16a34a)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 12px 32px -8px rgba(34,197,94,0.6)',
+                  }}
+                >
+                  <PhoneIcon size={24} weight="fill" className="text-white" />
+                </motion.button>
+                <span className="text-[11px] text-white/30 font-medium">Answer</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── CONNECTED: controls + end call ──────────────────────────────── */}
+        <AnimatePresence>
+          {phase === 'connected' && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center w-full"
+            >
+              <div className="flex items-center gap-5 mb-8">
+                <ControlButton label={muted ? 'Unmute' : 'Mute'} active={muted}
+                  onClick={() => setMuted(v => !v)}
+                  icon={muted ? <MicrophoneSlashIcon size={20} weight="fill" /> : <MicrophoneIcon size={20} weight="regular" />}
+                />
+                <ControlButton label={speakerOn ? 'Speaker on' : 'Speaker'} active={speakerOn}
+                  onClick={() => setSpeakerOn(v => !v)}
+                  icon={speakerOn ? <SpeakerHighIcon size={20} weight="fill" /> : <SpeakerSlashIcon size={20} weight="regular" />}
+                />
+                <ControlButton label="Keypad" active={keypadOpen}
+                  onClick={() => setKeypadOpen(v => !v)}
+                  icon={<GridNineIcon size={20} weight="regular" />}
+                />
+                <ControlButton label="Add" active={false} onClick={() => {}} disabled
+                  icon={<UserPlusIcon size={20} weight="regular" />}
+                />
+              </div>
+
+              <motion.button whileTap={{ scale: 0.93 }} onClick={handleEnd}
+                className="w-16 h-16 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(180deg, #ef4444, #dc2626)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 12px 32px -8px rgba(239,68,68,0.6)',
+                }}
+                aria-label="End call"
+              >
+                <PhoneSlashIcon size={24} weight="fill" className="text-white" />
+              </motion.button>
+              <p className="text-white/25 text-[11px] mt-3 font-medium">End call</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Connecting spinner */}
+        <AnimatePresence>
+          {phase === 'connecting' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-3 mb-8"
+            >
+              <div className="w-8 h-8 rounded-full border-2 border-blue-400/40 border-t-blue-400 animate-spin" />
+              <span className="text-[11px] text-white/30 font-medium">Connecting to Scott…</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   )
 }
 
-function ControlButton({
-  label,
-  icon,
-  active,
-  onClick,
-  disabled = false,
-}: {
-  label: string
-  icon: React.ReactNode
-  active: boolean
-  onClick: () => void
-  disabled?: boolean
+function ControlButton({ label, icon, active, onClick, disabled = false }: {
+  label: string; icon: React.ReactNode; active: boolean; onClick: () => void; disabled?: boolean
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="flex flex-col items-center gap-1.5 disabled:opacity-30"
-    >
-      <div
-        className={`w-14 h-14 rounded-pill flex items-center justify-center transition-all ${
-          active ? 'text-white' : 'text-white/70 hover:text-white'
-        }`}
+    <button onClick={onClick} disabled={disabled} className="flex flex-col items-center gap-1.5 disabled:opacity-30">
+      <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${active ? 'text-white' : 'text-white/70 hover:text-white'}`}
         style={{
           background: active ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
           border: active ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
