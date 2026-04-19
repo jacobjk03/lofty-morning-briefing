@@ -10,7 +10,9 @@ import {
   SparkleIcon,
   ArrowRightIcon,
   ArrowCounterClockwiseIcon,
+  CaretDownIcon,
 } from '@phosphor-icons/react'
+import LoftyUtilityRail from './LoftyUtilityRail'
 import Orb, { OrbState } from './Orb'
 import ActionCard from './ActionCard'
 import CaptionStrip from './CaptionStrip'
@@ -19,6 +21,8 @@ import { useVoice } from '../hooks/useVoice'
 interface AfterScreenProps {
   onViewLead: () => void
   onOpenChat: () => void
+  /** Full CRM-style dashboard (same widgets as Today / Before tab) */
+  onOpenDashboard: () => void
 }
 
 const BRIEFING =
@@ -69,7 +73,7 @@ const CARDS = [
 
 type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
 
-export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps) {
+export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard }: AfterScreenProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [revealedChars, setRevealedChars] = useState(0)
   const [approved, setApproved] = useState<Record<string, boolean>>({})
@@ -161,26 +165,26 @@ export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps
   })
 
   return (
-    <div className="canvas-dark canvas-grid flex flex-col h-full relative">
-      {/* Top bar — minimal, monochrome */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-3.5 border-b border-white/[0.05]">
+    <div className="flex flex-col h-full relative bg-[#f3f4f8]">
+      {/* Top bar — light, matches NavBar style */}
+      <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-ink-200 bg-white shrink-0">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-pill bg-cyan-300" />
-            <span className="text-[10px] font-semibold tracking-wider2 text-white/80">
+            <span className="w-1.5 h-1.5 rounded-pill bg-blue-500" />
+            <span className="text-[10px] font-semibold tracking-wider2 text-ink-700">
               LOFTY AI
             </span>
           </span>
-          <span className="text-white/15 text-xs">/</span>
-          <span className="text-[11px] text-white/40 font-medium">Morning briefing</span>
+          <span className="text-ink-300 text-xs">/</span>
+          <span className="text-[11px] text-ink-500 font-medium">Morning briefing</span>
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setVoiceOn((v) => !v)}
-            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight transition-all
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight transition-all border
                         ${voiceOn
-                          ? 'bg-white/[0.06] text-white/85 border border-white/[0.14]'
-                          : 'bg-transparent text-white/40 border border-white/[0.08] hover:bg-white/[0.04] hover:text-white/70'}`}
+                          ? 'bg-ink-100 text-ink-700 border-ink-300'
+                          : 'bg-transparent text-ink-400 border-ink-200 hover:bg-ink-50 hover:text-ink-700'}`}
           >
             {voiceOn ? <MicrophoneIcon size={12} weight="regular" /> : <MicrophoneSlashIcon size={12} weight="regular" />}
             {voiceOn ? 'Voice on' : 'Voice off'}
@@ -188,7 +192,7 @@ export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps
           <button
             onClick={() => { voice.cancel(); start() }}
             className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight
-                       bg-transparent text-white/40 border border-white/[0.08] hover:bg-white/[0.04] hover:text-white/70 transition-all"
+                       bg-transparent text-ink-400 border border-ink-200 hover:bg-ink-50 hover:text-ink-700 transition-all"
           >
             <ArrowCounterClockwiseIcon size={12} weight="regular" />
             Replay
@@ -196,25 +200,37 @@ export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-y-auto relative z-10">
-        <div className="max-w-5xl mx-auto px-6 pt-6 pb-20 flex flex-col items-center">
+      {/* Main + right rail (matches Lofty’s utility stack) */}
+      <div className="flex flex-1 min-h-0 relative z-10">
+        <div className="flex-1 overflow-y-auto min-w-0">
+          <div className="max-w-5xl mx-auto px-6 pt-6 pb-20 flex flex-col items-center">
           {/* Orb */}
           <div className="relative -mb-10">
             <Orb state={orbState} size={116} />
           </div>
 
-          {/* Greeting */}
+          {/* Greeting + dashboard escape hatch */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mt-0"
+            className="text-center mt-0 w-full max-w-xl"
           >
-            <h1 className="text-[30px] md:text-[34px] font-semibold text-white tracking-tightest leading-[1.02]">
-              Good morning, Baylee
-            </h1>
-            <p className="mt-1.5 text-[11.5px] text-white/35 font-medium tabular-nums tracking-tight">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-3">
+              <h1 className="text-[28px] md:text-[32px] font-semibold text-ink-900 tracking-tightest leading-[1.02]">
+                Good morning, Baylee
+              </h1>
+              <button
+                type="button"
+                onClick={onOpenDashboard}
+                className="inline-flex items-center justify-center gap-1 self-center sm:self-auto h-8 px-2.5 rounded-md text-[11px] font-semibold text-ink-500 border border-ink-200 bg-white hover:bg-ink-50 hover:text-ink-800 hover:border-ink-300 transition-colors"
+                title="Open the full dashboard with all CRM widgets"
+              >
+                My Dashboard
+                <CaretDownIcon size={12} weight="bold" className="opacity-60" />
+              </button>
+            </div>
+            <p className="mt-1.5 text-[11.5px] text-ink-400 font-medium tabular-nums tracking-tight">
               {today} · {time}
             </p>
           </motion.div>
@@ -271,10 +287,10 @@ export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps
                 exit={{ opacity: 0 }}
                 className="mt-10 text-center"
               >
-                <p className="text-white/85 text-[14px] font-medium tracking-tight">
+                <p className="text-ink-800 text-[14px] font-medium tracking-tight">
                   All three executing · I'll check back in an hour.
                 </p>
-                <p className="text-white/35 text-[11px] mt-1.5">Inbox zero for your morning.</p>
+                <p className="text-ink-400 text-[11px] mt-1.5">Inbox zero for your morning.</p>
               </motion.div>
             ) : phase === 'done' ? (
               <motion.div
@@ -300,13 +316,13 @@ export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps
                 <div
                   onClick={onOpenChat}
                   className="flex items-center gap-2.5 w-[420px] h-10 px-4 rounded-pill cursor-text
-                             bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.16] transition-all"
+                             bg-white border border-ink-200 hover:border-blue-400 transition-all shadow-sm"
                 >
-                  <SparkleIcon size={14} weight="regular" className="text-cyan-300/80" />
-                  <span className="flex-1 text-[12.5px] text-white/35">Ask Lofty AI anything…</span>
-                  <ArrowRightIcon size={14} weight="regular" className="text-white/25" />
+                  <SparkleIcon size={14} weight="regular" className="text-blue-500" />
+                  <span className="flex-1 text-[12.5px] text-ink-400">Ask Lofty AI anything…</span>
+                  <ArrowRightIcon size={14} weight="regular" className="text-ink-300" />
                 </div>
-                <p className="text-[10.5px] text-white/25 mt-1">
+                <p className="text-[10.5px] text-ink-400 mt-1">
                   {approvedCount > 0 && approvedCount < 3
                     ? `${approvedCount} approved · ${3 - approvedCount} pending`
                     : 'Say "go" or tap approve'}
@@ -316,14 +332,21 @@ export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps
           </AnimatePresence>
 
           {/* Escape hatch */}
-          <div className="fixed bottom-4 right-6 z-20">
-            <button className="inline-flex items-center gap-1.5 text-[10.5px] text-white/25 hover:text-white/70
-                               transition-colors font-medium tracking-tight">
+          <div className="fixed bottom-4 right-14 md:right-[52px] z-20">
+            <button
+              type="button"
+              onClick={onOpenDashboard}
+              className="inline-flex items-center gap-1.5 text-[10.5px] text-ink-400 hover:text-ink-700
+                         transition-colors font-medium tracking-tight"
+            >
               Explore the full Lofty dashboard
               <ArrowRightIcon size={12} weight="regular" />
             </button>
           </div>
         </div>
+        </div>
+
+        <LoftyUtilityRail onOpenChat={onOpenChat} />
       </div>
     </div>
   )

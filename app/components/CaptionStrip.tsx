@@ -18,11 +18,11 @@ export default function CaptionStrip({ text, revealedChars, speaking }: CaptionS
           key="caption"
           initial={{ opacity: 0.6 }}
           animate={{ opacity: 1 }}
-          className="text-[16px] leading-[1.55] text-white/85 font-medium tracking-tight"
+          className="text-[16px] leading-[1.55] text-ink-700 font-medium tracking-tight"
         >
           <span>{shown}</span>
-          <span className="text-white/25">{hidden}</span>
-          {speaking && <span className="caret bg-white/80" />}
+          <span className="text-ink-300">{hidden}</span>
+          {speaking && <span className="caret bg-ink-600" />}
         </motion.p>
       </AnimatePresence>
     </div>

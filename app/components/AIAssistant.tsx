@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { SparkleIcon, ArrowUpIcon } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Orb from './Orb'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -52,38 +51,46 @@ export default function AIAssistant() {
   }
 
   return (
-    <div className="canvas-dark canvas-grid flex flex-col h-full relative">
+    <div className="flex flex-col h-full bg-[#f3f4f8]">
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-3.5 border-b border-white/[0.05]">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-ink-200 bg-white shrink-0">
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-pill bg-cyan-300" />
-            <span className="text-[10px] font-semibold tracking-wider2 text-white/80">LOFTY AI</span>
-          </span>
-          <span className="text-white/15 text-xs">/</span>
-          <span className="text-[11px] text-white/40 font-medium">Conversation</span>
+          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+               style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
+            <SparkleIcon size={12} weight="fill" className="text-white/90" />
+          </div>
+          <div>
+            <p className="text-[12px] font-semibold text-ink-800 leading-none">Lofty AI</p>
+            <p className="text-[10px] text-ink-400 mt-0.5">Ask me anything about your day</p>
+          </div>
         </div>
-        <span className="text-[10px] text-white/30 font-medium">Powered by Groq · llama-3.3-70b</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-pill bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] text-ink-400 font-medium">Online</span>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto chat-scroll relative z-10">
-        <div className="max-w-3xl mx-auto px-6 py-10">
+      <div className="flex-1 overflow-y-auto chat-scroll">
+        <div className="max-w-3xl mx-auto px-6 py-8">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center text-center pt-8">
-              <Orb state="idle" size={96} />
-              <h2 className="text-white text-[26px] font-semibold tracking-tightest mt-6">How can I help?</h2>
-              <p className="text-white/40 text-[13px] mt-2 max-w-sm">
+            <div className="flex flex-col items-center text-center pt-6">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-md"
+                   style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
+                <SparkleIcon size={22} weight="fill" className="text-white/90" />
+              </div>
+              <h2 className="text-ink-900 text-[22px] font-semibold tracking-tightest">Hi Baylee! 👋</h2>
+              <p className="text-ink-500 text-[13px] mt-2 max-w-sm">
                 I know your leads, transactions, Smart Plans and inbox. Ask me anything.
               </p>
-              <div className="flex flex-wrap gap-2 justify-center mt-8 max-w-xl">
+              <div className="flex flex-wrap gap-2 justify-center mt-7 max-w-xl">
                 {STARTERS.map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="inline-flex items-center h-9 px-4 rounded-pill text-[12.5px] font-medium
-                               text-white/75 bg-white/[0.04] border border-white/[0.08]
-                               hover:border-white/[0.18] hover:bg-white/[0.07] hover:text-white transition-all"
+                    className="inline-flex items-center h-9 px-4 rounded-pill text-[12px] font-medium
+                               text-blue-700 bg-white border border-blue-200
+                               hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm"
                   >
                     {s}
                   </button>
@@ -103,19 +110,17 @@ export default function AIAssistant() {
                   {msg.role === 'assistant' && (
                     <div className="shrink-0 mr-3 mt-1">
                       <div className="w-7 h-7 rounded-pill flex items-center justify-center"
-                           style={{
-                             background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)',
-                             boxShadow: 'inset 0 0 10px rgba(34,211,238,0.4), 0 0 12px rgba(34,211,238,0.3)',
-                           }}>
+                           style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
                         <SparkleIcon size={12} weight="fill" className="text-white/90" />
                       </div>
                     </div>
                   )}
                   <div
-                    className={`max-w-[78%] px-4 py-2.5 rounded-lg text-[13.5px] leading-[1.55]
-                                ${msg.role === 'user'
-                                  ? 'bg-white/[0.06] border border-white/[0.08] text-white rounded-br-sm'
-                                  : 'bg-transparent text-white/85 rounded-bl-sm'}`}
+                    className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-[13.5px] leading-[1.55] ${
+                      msg.role === 'user'
+                        ? 'bg-blue-600 text-white rounded-br-sm shadow-sm'
+                        : 'bg-white text-ink-800 border border-ink-200 rounded-bl-sm shadow-sm'
+                    }`}
                   >
                     {msg.content}
                   </div>
@@ -129,16 +134,14 @@ export default function AIAssistant() {
                     exit={{ opacity: 0 }}
                     className="flex items-center gap-3"
                   >
-                    <div className="w-7 h-7 rounded-pill flex items-center justify-center"
-                         style={{
-                           background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)',
-                         }}>
-                      <Sparkles className="w-3 h-3 text-white/90" strokeWidth={2} />
+                    <div className="w-7 h-7 rounded-pill flex items-center justify-center shrink-0"
+                         style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
+                      <SparkleIcon size={12} weight="fill" className="text-white/90" />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="typing-dot" style={{ background: '#22D3EE' }} />
-                      <span className="typing-dot" style={{ background: '#22D3EE' }} />
-                      <span className="typing-dot" style={{ background: '#22D3EE' }} />
+                    <div className="bg-white border border-ink-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
+                      <span className="typing-dot" />
                     </div>
                   </motion.div>
                 )}
@@ -150,35 +153,34 @@ export default function AIAssistant() {
       </div>
 
       {/* Input */}
-      <div className="relative z-10 border-t border-white/[0.05] p-4">
+      <div className="border-t border-ink-200 bg-white p-4 shrink-0">
         <form
           onSubmit={(e) => { e.preventDefault(); send(input) }}
           className="max-w-3xl mx-auto"
         >
-          <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.10] rounded-pill pl-4 pr-1.5 h-11
-                          focus-within:border-cyan-400/40 focus-within:bg-white/[0.05] transition-all">
-            <SparkleIcon size={16} weight="regular" className="text-cyan-300/70" />
+          <div className="flex items-center gap-2 bg-ink-50 border border-ink-200 rounded-pill pl-4 pr-1.5 h-11
+                          focus-within:border-blue-400 focus-within:bg-white transition-all">
+            <SparkleIcon size={15} weight="regular" className="text-blue-500" />
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Lofty AI anything…"
               disabled={loading}
-              className="flex-1 bg-transparent text-[13px] text-white placeholder-white/35 focus:outline-none"
+              className="flex-1 bg-transparent text-[13px] text-ink-800 placeholder-ink-400 focus:outline-none"
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
               className="w-8 h-8 flex items-center justify-center rounded-pill transition-all
-                         disabled:opacity-30 disabled:cursor-not-allowed"
-              style={{
-                background: input.trim() ? '#22D3EE' : 'rgba(255,255,255,0.06)',
-                color: input.trim() ? '#0B1220' : 'rgba(255,255,255,0.4)',
-              }}
+                         disabled:opacity-30 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white"
             >
               <ArrowUpIcon size={16} weight="bold" />
             </button>
           </div>
+          <p className="text-center text-[10.5px] text-ink-400 mt-2">
+            Powered by Lofty AI · llama-3.3-70b via Groq
+          </p>
         </form>
       </div>
     </div>
