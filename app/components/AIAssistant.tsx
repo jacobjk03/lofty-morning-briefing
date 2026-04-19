@@ -60,16 +60,20 @@ interface Intent {
   label: string
 }
 
-function detectIntent(text: string): Intent | null {
+interface IntentMatch extends Intent {
+  rationale?: string
+}
+
+function detectIntent(text: string): IntentMatch | null {
   const t = text.toLowerCase()
   if (/\b(scott|hayes|lead detail|open lead|lead page|view lead)\b/.test(t))
-    return { target: 'lead', label: 'Scott Hayes' }
+    return { target: 'lead', label: 'Lead detail · Scott Hayes', rationale: 'Hot lead · score 92 · back on 650 Maple' }
   if (/\b(briefing|morning|today'?s agenda|lofty ai home|go back)\b/.test(t))
-    return { target: 'after', label: 'the morning briefing' }
+    return { target: 'after', label: 'Morning briefing', rationale: 'Three actions Lofty Copilot queued for today' }
   if (/\b(dashboard|crm|everything|full view|all widgets|old lofty)\b/.test(t))
-    return { target: 'dashboard', label: 'the full dashboard' }
+    return { target: 'dashboard', label: 'My Dashboard', rationale: 'The full CRM — all 12 widgets' }
   if (/\b(ai agents?|show agents|social agent|sales agent|homeowner agent|workers|automat)\b/.test(t))
-    return { target: 'agents', label: 'your AI Agents' }
+    return { target: 'agents', label: 'AI Agents', rationale: 'Your always-on workforce' }
   return null
 }
 
@@ -101,7 +105,7 @@ function splitReply(content: string): { lead: string; callout?: string; tail?: s
 }
 
 interface AIAssistantProps {
-  onNavigate?: (target: NavTarget) => void
+  onNavigate?: (target: NavTarget, label?: string, rationale?: string) => void
   onOpenAddLead?: () => void
   onOpenSmartPlan?: () => void
   initialInput?: { text: string; nonce: number } | null
@@ -142,9 +146,10 @@ export default function AIAssistant({ onNavigate, onOpenAddLead, onOpenSmartPlan
     if (intent) {
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: `Opening ${intent.label} for you now.` },
+        { role: 'assistant', content: `Opening ${intent.label.toLowerCase().replace(/^(my |the )/,'')} for you.` },
       ])
-      setTimeout(() => onNavigate!(intent.target), 900)
+      // Overlay plays the transition beat, so no long timeout here.
+      setTimeout(() => onNavigate!(intent.target, intent.label, intent.rationale), 250)
       return
     }
 

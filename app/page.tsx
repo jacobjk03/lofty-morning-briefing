@@ -12,6 +12,7 @@ const AddLeadModal = dynamic(() => import('./components/AddLeadModal'), { ssr: f
 const SmartPlanModal = dynamic(() => import('./components/SmartPlanModal'), { ssr: false })
 const Toast = dynamic(() => import('./components/Toast'), { ssr: false })
 const TransitionIntro = dynamic(() => import('./components/TransitionIntro'), { ssr: false })
+const NavigatingOverlay = dynamic(() => import('./components/NavigatingOverlay'), { ssr: false })
 
 type Screen = 'before' | 'after' | 'lead' | 'agents' | 'chat' | 'dashboard'
 
@@ -24,6 +25,17 @@ const TABS: { id: Screen; label: string }[] = [
   { id: 'chat', label: 'Conversation' },
 ]
 
+function targetLabel(s: Screen): string {
+  switch (s) {
+    case 'before':    return 'Today'
+    case 'after':     return 'Morning briefing'
+    case 'lead':      return 'Lead detail · Scott Hayes'
+    case 'agents':    return 'AI Agents'
+    case 'chat':      return 'Lofty Copilot'
+    case 'dashboard': return 'My Dashboard'
+  }
+}
+
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('after')
   const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null)
@@ -31,6 +43,7 @@ export default function Home() {
   const [smartPlanOpen, setSmartPlanOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [introOpen, setIntroOpen] = useState(false)
+  const [navPayload, setNavPayload] = useState<{ target: Screen; label: string; rationale?: string } | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -85,6 +98,17 @@ export default function Home() {
 
   const goTo = (s: Screen) => {
     setScreen(s)
+  }
+
+  /** Play navigation beat, then land on destination. */
+  const navigateWithOverlay = (target: Screen, label: string, rationale?: string) => {
+    setNavPayload({ target, label, rationale })
+  }
+  const finishNavigation = () => {
+    if (!navPayload) return
+    const t = navPayload.target
+    setNavPayload(null)
+    setScreen(t)
   }
 
   const openChatWith = (text?: string) => {
@@ -232,7 +256,9 @@ export default function Home() {
         </div>
 <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'chat' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <AIAssistant
-            onNavigate={(target) => goTo(target as Screen)}
+            onNavigate={(target, label, rationale) =>
+              navigateWithOverlay(target as Screen, label || targetLabel(target as Screen), rationale)
+            }
             onOpenAddLead={() => setAddLeadOpen(true)}
             onOpenSmartPlan={() => setSmartPlanOpen(true)}
             initialInput={chatPrefill}
@@ -257,6 +283,14 @@ export default function Home() {
 
       {/* First-visit transition intro */}
       {introOpen && <TransitionIntro onDone={dismissIntro} />}
+
+      {/* Navigation agent overlay */}
+      {navPayload && (
+        <NavigatingOverlay
+          payload={{ label: navPayload.label, rationale: navPayload.rationale }}
+          onDone={finishNavigation}
+        />
+      )}
     </div>
   )
 }
