@@ -1,16 +1,16 @@
 'use client'
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   SparkleIcon,
   ArrowUpIcon,
-  PaperclipIcon,
   NotePencilIcon,
   CalendarPlusIcon,
   ClockCounterClockwiseIcon,
-  UserCircleIcon,
-  ArrowRightIcon,
+  MicrophoneIcon,
+  MicrophoneSlashIcon,
 } from '@phosphor-icons/react'
+import { useElevenLabsVoice } from '../hooks/useElevenLabsVoice'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -86,8 +86,13 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [voiceOn, setVoiceOn] = useState(false)
+  const [listening, setListening] = useState(false)
   const lastPrefillNonce = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const voiceOnRef = useRef(false)
+  const recognitionRef = useRef<any>(null)
+  const voice = useElevenLabsVoice()
 
   const send = async (text: string) => {
     const trimmed = text.trim()
@@ -114,7 +119,11 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
         body: JSON.stringify({ messages: newMessages }),
       })
       const data = await res.json()
-      setMessages([...newMessages, { role: 'assistant', content: data.message }])
+      const reply: string = data.message
+      setMessages([...newMessages, { role: 'assistant', content: reply }])
+      if (voiceOnRef.current) {
+        voice.speak(reply)
+      }
     } catch {
       setMessages([
         ...newMessages,
@@ -124,6 +133,31 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
       setLoading(false)
     }
   }
+
+  const startListening = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) return
+    if (recognitionRef.current) recognitionRef.current.abort()
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+    recognitionRef.current = recognition
+
+    recognition.onstart = () => setListening(true)
+    recognition.onend = () => setListening(false)
+    recognition.onerror = () => setListening(false)
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setListening(false)
+      send(transcript)
+    }
+
+    recognition.start()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!initialInput) return
@@ -157,6 +191,25 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-[#f7f9fb]">
+      {/* Voice toggle — top right */}
+      <div className="absolute top-4 right-5 z-20">
+        <button
+          onClick={() => {
+            const next = !voiceOn
+            voiceOnRef.current = next
+            setVoiceOn(next)
+            if (!next) voice.cancel()
+          }}
+          className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill text-[10.5px] font-semibold tracking-tight transition-all border backdrop-blur
+                      ${voiceOn
+                        ? 'bg-ink-900/90 text-white border-transparent'
+                        : 'bg-white/80 text-ink-500 border-ink-200 hover:bg-white hover:text-ink-800'}`}
+        >
+          {voiceOn ? <MicrophoneIcon size={12} weight="regular" /> : <MicrophoneSlashIcon size={12} weight="regular" />}
+          {voiceOn ? 'Voice on' : 'Voice off'}
+        </button>
+      </div>
+
       {/* Ambient orbs */}
       <div
         className="pointer-events-none absolute -top-24 -right-24 w-[440px] h-[440px] rounded-pill"
@@ -311,22 +364,29 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
                          shadow-[0_14px_40px_-16px_rgba(15,23,42,0.18)]
                          focus-within:border-blue-400 focus-within:shadow-[0_14px_40px_-10px_rgba(37,99,235,0.28)] transition-all"
             >
-              <button
-                type="button"
-                className="w-9 h-9 shrink-0 rounded-pill flex items-center justify-center text-ink-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                aria-label="Attach"
-              >
-                <PaperclipIcon size={16} weight="regular" />
-              </button>
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Lofty AI for the next step…"
+                placeholder={listening ? 'Listening…' : 'Ask Lofty AI for the next step…'}
                 disabled={loading}
                 autoFocus
-                className="flex-1 bg-transparent text-[14px] text-ink-900 placeholder-ink-400 focus:outline-none"
+                className="flex-1 bg-transparent text-[14px] text-ink-900 placeholder-ink-400 focus:outline-none ml-1"
               />
+              {/* Mic button — prominent, always visible */}
+              <button
+                type="button"
+                onClick={startListening}
+                className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all
+                            ${listening
+                              ? 'bg-red-500 text-white animate-pulse shadow-lg'
+                              : voiceOn
+                                ? 'bg-ink-900 text-white hover:bg-ink-700'
+                                : 'bg-ink-100 text-ink-600 hover:bg-ink-200'}`}
+                aria-label="Speak"
+              >
+                <MicrophoneIcon size={17} weight={voiceOn ? 'fill' : 'regular'} />
+              </button>
               <button
                 type="submit"
                 disabled={!input.trim() || loading}

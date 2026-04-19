@@ -105,15 +105,17 @@ export default function Home() {
             0%, 100% { text-shadow: 0 0 8px #C4622D, 0 0 16px #C4622D; color: #C4622D; }
             50% { text-shadow: 0 0 20px #C4622D, 0 0 40px #C4622D, 0 0 60px #C4622D; color: #d4733d; }
           }
-          @keyframes sparkleTwinkle {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.2) rotate(20deg); }
+          @keyframes sparkleSpin {
+            0%   { transform: rotate(0deg)   scale(1);    }
+            8%   { transform: rotate(360deg) scale(1.2);  }
+            16%  { transform: rotate(720deg) scale(1);    }
+            100% { transform: rotate(720deg) scale(1);    }
           }
           @keyframes fadeInNav {
             from { opacity: 0; transform: translateY(-4px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          .navia-sparkle { display: inline-block; animation: sparkleTwinkle 3s ease-in-out infinite; color: #C4622D; line-height: 1; }
+          .navia-sparkle { display: inline-block; animation: sparkleSpin 4s ease-in-out infinite; color: #C4622D; line-height: 1; }
           .navia-word { animation: naviaGlow 2s ease-in-out infinite; text-decoration: none; }
           .navia-word:hover { text-decoration: underline; }
           .navia-wrapper { opacity: 0; animation: fadeInNav 0.8s ease-out 0.5s forwards; }
@@ -173,6 +175,7 @@ export default function Home() {
             onOpenDashboard={() => goTo('dashboard')}
             briefingData={briefing}
             leads={leads}
+            visible={screen === 'after'}
           />
         </div>
         <div

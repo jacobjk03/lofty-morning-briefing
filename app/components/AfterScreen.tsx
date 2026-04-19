@@ -16,7 +16,7 @@ import ActionCard from './ActionCard'
 import CaptionStrip from './CaptionStrip'
 import DraftModal from './DraftModal'
 import DetailSheet, { type DetailView } from './DetailSheet'
-import { useVoice } from '../hooks/useVoice'
+import { useElevenLabsVoice } from '../hooks/useElevenLabsVoice'
 
 interface AfterScreenProps {
   onViewLead: () => void
@@ -24,6 +24,7 @@ interface AfterScreenProps {
   onOpenDashboard: () => void
   briefingData?: any
   leads?: any[]
+  visible?: boolean
 }
 
 const BRIEFING_DEFAULT =
@@ -87,7 +88,7 @@ const SUCCESS_TOAST: Record<string, string> = {
 
 type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
 
-export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, briefingData, leads }: AfterScreenProps) {
+export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, briefingData, leads, visible = true }: AfterScreenProps) {
   const BRIEFING = briefingData?.briefingText || BRIEFING_DEFAULT
 
   const cards = CARDS.map((card, i) => {
@@ -103,15 +104,65 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
   const [detailView, setDetailView] = useState<DetailView | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [askInput, setAskInput] = useState('')
+  const [listening, setListening] = useState(false)
+  const [voiceReply, setVoiceReply] = useState<string | null>(null)
+  const [replying, setReplying] = useState(false)
   const fallbackTimer = useRef<NodeJS.Timeout | null>(null)
   const toastTimer = useRef<NodeJS.Timeout | null>(null)
-  const voice = useVoice()
+  const voiceOnRef = useRef(false)
+  const recognitionRef = useRef<any>(null)
+  const voice = useElevenLabsVoice()
 
   const showToast = (msg: string) => {
     setToast(msg)
     if (toastTimer.current) clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(null), 2800)
   }
+
+  const startListening = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) return
+    if (recognitionRef.current) recognitionRef.current.abort()
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+    recognitionRef.current = recognition
+
+    recognition.onstart = () => setListening(true)
+    recognition.onend = () => setListening(false)
+    recognition.onerror = () => setListening(false)
+
+    recognition.onresult = async (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setAskInput(transcript)
+      setListening(false)
+
+      if (voiceOnRef.current) {
+        setReplying(true)
+        setVoiceReply(null)
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: [{ role: 'user', content: transcript }] }),
+          })
+          const data = await res.json()
+          const reply: string = data.message || ''
+          setVoiceReply(reply)
+          setReplying(false)
+          voice.speak(reply, {
+            onEnd: () => setTimeout(() => setVoiceReply(null), 2500),
+          })
+        } catch {
+          setReplying(false)
+        }
+      }
+    }
+
+    recognition.start()
+  }, [voice])
 
   const orbState: OrbState = useMemo(() => {
     if (phase === 'thinking') return 'thinking'
@@ -128,31 +179,54 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
     setRevealedChars(0)
     setPhase('thinking')
 
-    setTimeout(() => {
-      setPhase('speaking')
+    // Always start timer animation as fallback/default
+    const runTimer = () => {
+      if (fallbackTimer.current) clearInterval(fallbackTimer.current)
+      let i = 0
+      const id = setInterval(() => {
+        i += 3
+        setRevealedChars(Math.min(i, BRIEFING.length))
+        if (i >= BRIEFING.length) {
+          clearInterval(id)
+          fallbackTimer.current = null
+          setPhase('done')
+        }
+      }, 55)
+      fallbackTimer.current = id
+    }
 
-      if (voiceOn && voice.supported) {
-        voice.speak(BRIEFING, {
-          onBoundary: ({ charIndex }) => setRevealedChars(charIndex + 6),
-          onEnd: () => {
-            setRevealedChars(BRIEFING.length)
-            setPhase('done')
-          },
-        })
-      } else {
-        let i = 0
-        const id = setInterval(() => {
-          i += 3
-          setRevealedChars(Math.min(i, BRIEFING.length))
-          if (i >= BRIEFING.length) {
-            clearInterval(id)
-            setPhase('done')
+    if (voiceOnRef.current && voice.supported) {
+      // Initiate fetch immediately (within user-gesture context) to avoid autoplay block
+      voice.speak(BRIEFING, {
+        onBoundary: ({ charIndex }) => {
+          // Voice is working — cancel fallback timer, use voice-driven progress
+          if (fallbackTimer.current) {
+            clearInterval(fallbackTimer.current)
+            fallbackTimer.current = null
           }
-        }, 55)
-        fallbackTimer.current = id
-      }
-    }, 1100)
-  }, [voice, voiceOn])
+          setRevealedChars(charIndex + 6)
+        },
+        onEnd: () => {
+          if (fallbackTimer.current) {
+            clearInterval(fallbackTimer.current)
+            fallbackTimer.current = null
+          }
+          setRevealedChars(BRIEFING.length)
+          setPhase('done')
+        },
+      })
+      // Start fallback timer; onBoundary cancels it once audio starts working
+      setTimeout(() => {
+        setPhase('speaking')
+        runTimer()
+      }, 1100)
+    } else {
+      setTimeout(() => {
+        setPhase('speaking')
+        runTimer()
+      }, 1100)
+    }
+  }, [voice])
 
   useEffect(() => {
     start()
@@ -163,6 +237,15 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Pause audio when tab is hidden, resume when back
+  useEffect(() => {
+    if (!visible) {
+      voice.pause()
+    } else {
+      voice.resume()
+    }
+  }, [visible])
 
   const markApproved = (id: string, toastMsg?: string) => {
     setApproved((a) => {
@@ -214,7 +297,17 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
       {/* Floating Voice / Replay — no redundant header */}
       <div className="absolute top-4 right-5 z-20 flex items-center gap-1.5">
         <button
-          onClick={() => setVoiceOn((v) => !v)}
+          onClick={() => {
+            const next = !voiceOn
+            voiceOnRef.current = next
+            setVoiceOn(next)
+            if (next) {
+              voice.cancel()
+              start()
+            } else {
+              voice.cancel()
+            }
+          }}
           className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill text-[10.5px] font-semibold tracking-tight transition-all border backdrop-blur
                       ${voiceOn
                         ? 'bg-ink-900/90 text-white border-transparent'
@@ -344,23 +437,57 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
                   <SparkleIcon size={14} weight="regular" />
                   Do all three
                 </button>
+                {/* Voice reply bubble */}
+                <AnimatePresence>
+                  {(replying || voiceReply) && (
+                    <motion.div
+                      key="voice-reply"
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ duration: 0.2 }}
+                      className="w-[420px] px-4 py-3 rounded-2xl bg-ink-900 text-white text-[12.5px] leading-relaxed shadow-lg -mb-1"
+                    >
+                      {replying ? (
+                        <span className="opacity-50 italic">Thinking…</span>
+                      ) : (
+                        <span>{voiceReply}</span>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <form
                   onSubmit={(e) => {
                     e.preventDefault()
-                    onOpenChat(askInput.trim() || undefined)
-                    setAskInput('')
+                    if (!voiceOnRef.current) {
+                      onOpenChat(askInput.trim() || undefined)
+                      setAskInput('')
+                    }
                   }}
-                  className="flex items-center gap-2.5 w-[420px] h-10 px-4 rounded-pill
+                  className="flex items-center gap-2 w-[420px] h-10 px-3 rounded-pill
                              bg-white border border-ink-200 focus-within:border-blue-400 transition-all shadow-sm"
                 >
-                  <SparkleIcon size={14} weight="regular" className="text-blue-500 shrink-0" />
+                  <SparkleIcon size={14} weight="regular" className="text-blue-500 shrink-0 ml-1" />
                   <input
                     type="text"
                     value={askInput}
                     onChange={(e) => setAskInput(e.target.value)}
-                    placeholder="Ask Lofty AI anything…"
+                    placeholder={listening ? 'Listening…' : 'Ask Lofty AI anything…'}
                     className="flex-1 bg-transparent text-[12.5px] text-ink-800 placeholder-ink-400 focus:outline-none"
                   />
+                  {/* Mic button — always visible */}
+                  <button
+                    type="button"
+                    onClick={startListening}
+                    className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all
+                                ${listening
+                                  ? 'bg-red-500 text-white animate-pulse'
+                                  : 'bg-ink-100 text-ink-500 hover:bg-ink-200 hover:text-ink-800'}`}
+                    aria-label="Speak"
+                  >
+                    <MicrophoneIcon size={13} weight="regular" />
+                  </button>
                   <button
                     type="submit"
                     className="shrink-0 w-7 h-7 rounded-pill flex items-center justify-center transition-all
