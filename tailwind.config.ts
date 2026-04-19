@@ -28,6 +28,13 @@ const config: Config = {
           'SF Pro Display',
           'sans-serif',
         ],
+        headline: [
+          'Instrument Sans',
+          'Inter',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'sans-serif',
+        ],
       },
       colors: {
         // Core brand

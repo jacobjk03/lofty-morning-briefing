@@ -10,17 +10,16 @@ import {
   SparkleIcon,
   ArrowRightIcon,
   ArrowCounterClockwiseIcon,
-  CaretDownIcon,
 } from '@phosphor-icons/react'
-import LoftyUtilityRail from './LoftyUtilityRail'
 import Orb, { OrbState } from './Orb'
 import ActionCard from './ActionCard'
 import CaptionStrip from './CaptionStrip'
+import DraftModal from './DraftModal'
 import { useVoice } from '../hooks/useVoice'
 
 interface AfterScreenProps {
   onViewLead: () => void
-  onOpenChat: () => void
+  onOpenChat: (prefill?: string) => void
   onOpenDashboard: () => void
   briefingData?: any
   leads?: any[]
@@ -43,6 +42,9 @@ const CARDS = [
     source: 'Lofty Lead Analysis',
     accent: true,
     delayMs: 1800,
+    leadId: 1,
+    steps: ['Drafting personalized text', 'Delivering to Scott', 'Logging to CRM timeline'],
+    doneLabel: 'Message sent',
   },
   {
     id: 'johnson',
@@ -52,10 +54,12 @@ const CARDS = [
     meta: '650 Elm · Inspection contingency open',
     reasoning:
       'Inspection note still open. Two tasks overdue. I can reschedule and notify the client in one move.',
-    primaryLabel: 'Do all three',
+    primaryLabel: 'Reschedule + notify',
     secondaryLabel: 'Open deal',
     source: 'Transaction checklists',
     delayMs: 3400,
+    steps: ['Rescheduling inspection', 'Notifying Johnson', 'Updating transaction checklist'],
+    doneLabel: 'Inspection rescheduled',
   },
   {
     id: 'bloom',
@@ -69,8 +73,16 @@ const CARDS = [
     secondaryLabel: 'View plan',
     source: 'Smart Plans',
     delayMs: 5000,
+    steps: ['Cleaning bounced contacts', 'Re-validating recipients', 'Resuming Smart Plan'],
+    doneLabel: 'Smart Plan resumed',
   },
 ]
+
+const SUCCESS_TOAST: Record<string, string> = {
+  scott: 'Message sent to Scott Hayes',
+  johnson: 'Inspection rescheduled · client notified',
+  bloom: 'Contacts cleaned · Bloom plan resumed',
+}
 
 type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
 
@@ -86,8 +98,18 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
   const [revealedChars, setRevealedChars] = useState(0)
   const [approved, setApproved] = useState<Record<string, boolean>>({})
   const [voiceOn, setVoiceOn] = useState(false)
+  const [draftLeadId, setDraftLeadId] = useState<number | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [askInput, setAskInput] = useState('')
   const fallbackTimer = useRef<NodeJS.Timeout | null>(null)
+  const toastTimer = useRef<NodeJS.Timeout | null>(null)
   const voice = useVoice()
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(null), 2800)
+  }
 
   const orbState: OrbState = useMemo(() => {
     if (phase === 'thinking') return 'thinking'
@@ -134,32 +156,45 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
     start()
     return () => {
       if (fallbackTimer.current) clearInterval(fallbackTimer.current)
+      if (toastTimer.current) clearTimeout(toastTimer.current)
       voice.cancel()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleApprove = (id: string) => {
+  const markApproved = (id: string, toastMsg?: string) => {
     setApproved((a) => {
+      if (a[id]) return a
       const next = { ...a, [id]: true }
+      if (toastMsg) showToast(toastMsg)
       const count = Object.values(next).filter(Boolean).length
       if (count === 3) {
-        setTimeout(() => setPhase('executing'), 250)
+        setTimeout(() => setPhase('executing'), 350)
       }
       return next
     })
   }
 
+  const handleApprove = (id: string) => {
+    const card = cards.find((c) => c.id === id)
+    if (id === 'scott' && card && 'leadId' in card && card.leadId) {
+      setDraftLeadId(card.leadId as number)
+      return
+    }
+    markApproved(id, SUCCESS_TOAST[id])
+  }
+
   useEffect(() => {
     if (phase === 'executing') {
-      const t = setTimeout(() => setPhase('complete'), 1800)
+      const t = setTimeout(() => setPhase('complete'), 2900)
       return () => clearTimeout(t)
     }
   }, [phase])
 
   const handleApproveAll = () => {
-    setApproved({ scott: true, johnson: true, bloom: true })
-    setTimeout(() => setPhase('executing'), 300)
+    markApproved('scott', SUCCESS_TOAST.scott)
+    setTimeout(() => markApproved('johnson', SUCCESS_TOAST.johnson), 450)
+    setTimeout(() => markApproved('bloom', SUCCESS_TOAST.bloom), 900)
   }
 
   const today = new Date().toLocaleDateString('en-US', {
@@ -174,41 +209,29 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
 
   return (
     <div className="flex flex-col h-full relative bg-[#f3f4f8]">
-      {/* Top bar — light, matches NavBar style */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-ink-200 bg-white shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-pill bg-blue-500" />
-            <span className="text-[10px] font-semibold tracking-wider2 text-ink-700">
-              LOFTY AI
-            </span>
-          </span>
-          <span className="text-ink-300 text-xs">/</span>
-          <span className="text-[11px] text-ink-500 font-medium">Morning briefing</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setVoiceOn((v) => !v)}
-            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight transition-all border
-                        ${voiceOn
-                          ? 'bg-ink-100 text-ink-700 border-ink-300'
-                          : 'bg-transparent text-ink-400 border-ink-200 hover:bg-ink-50 hover:text-ink-700'}`}
-          >
-            {voiceOn ? <MicrophoneIcon size={12} weight="regular" /> : <MicrophoneSlashIcon size={12} weight="regular" />}
-            {voiceOn ? 'Voice on' : 'Voice off'}
-          </button>
-          <button
-            onClick={() => { voice.cancel(); start() }}
-            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight
-                       bg-transparent text-ink-400 border border-ink-200 hover:bg-ink-50 hover:text-ink-700 transition-all"
-          >
-            <ArrowCounterClockwiseIcon size={12} weight="regular" />
-            Replay
-          </button>
-        </div>
+      {/* Floating Voice / Replay — no redundant header */}
+      <div className="absolute top-4 right-5 z-20 flex items-center gap-1.5">
+        <button
+          onClick={() => setVoiceOn((v) => !v)}
+          className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill text-[10.5px] font-semibold tracking-tight transition-all border backdrop-blur
+                      ${voiceOn
+                        ? 'bg-ink-900/90 text-white border-transparent'
+                        : 'bg-white/80 text-ink-500 border-ink-200 hover:bg-white hover:text-ink-800'}`}
+        >
+          {voiceOn ? <MicrophoneIcon size={12} weight="regular" /> : <MicrophoneSlashIcon size={12} weight="regular" />}
+          {voiceOn ? 'Voice on' : 'Voice off'}
+        </button>
+        <button
+          onClick={() => { voice.cancel(); start() }}
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill text-[10.5px] font-semibold tracking-tight
+                     bg-white/80 backdrop-blur text-ink-500 border border-ink-200 hover:bg-white hover:text-ink-800 transition-all"
+        >
+          <ArrowCounterClockwiseIcon size={12} weight="regular" />
+          Replay
+        </button>
       </div>
 
-      {/* Main + right rail (matches Lofty’s utility stack) */}
+      {/* Main content */}
       <div className="flex flex-1 min-h-0 relative z-10">
         <div className="flex-1 overflow-y-auto min-w-0">
           <div className="max-w-5xl mx-auto px-6 pt-6 pb-20 flex flex-col items-center">
@@ -224,20 +247,9 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="text-center mt-0 w-full max-w-xl"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-3">
-              <h1 className="text-[28px] md:text-[32px] font-semibold text-ink-900 tracking-tightest leading-[1.02]">
-                Good morning, Baylee
-              </h1>
-              <button
-                type="button"
-                onClick={onOpenDashboard}
-                className="inline-flex items-center justify-center gap-1 self-center sm:self-auto h-8 px-2.5 rounded-md text-[11px] font-semibold text-ink-500 border border-ink-200 bg-white hover:bg-ink-50 hover:text-ink-800 hover:border-ink-300 transition-colors"
-                title="Open the full dashboard with all CRM widgets"
-              >
-                My Dashboard
-                <CaretDownIcon size={12} weight="bold" className="opacity-60" />
-              </button>
-            </div>
+            <h1 className="text-[28px] md:text-[32px] font-semibold text-ink-900 tracking-tightest leading-[1.02]">
+              Good morning, Baylee
+            </h1>
             <p className="mt-1.5 text-[11.5px] text-ink-400 font-medium tabular-nums tracking-tight">
               {today} · {time}
             </p>
@@ -277,8 +289,16 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
                     delayMs={c.delayMs}
                     approved={!!approved[c.id]}
                     executing={phase === 'executing' && !!approved[c.id]}
+                    steps={(c as any).steps}
+                    doneLabel={(c as any).doneLabel}
                     onApprove={() => handleApprove(c.id)}
-                    onSecondary={c.id === 'scott' ? onViewLead : () => {}}
+                    onSecondary={
+                      c.id === 'scott'
+                        ? onViewLead
+                        : c.id === 'johnson'
+                          ? () => showToast('Johnson deal opened in transactions')
+                          : () => showToast('Bloom Smart Plan preview coming up')
+                    }
                   />
                 ))}
               </motion.div>
@@ -322,15 +342,33 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
                   <SparkleIcon size={14} weight="regular" />
                   Do all three
                 </button>
-                <div
-                  onClick={onOpenChat}
-                  className="flex items-center gap-2.5 w-[420px] h-10 px-4 rounded-pill cursor-text
-                             bg-white border border-ink-200 hover:border-blue-400 transition-all shadow-sm"
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    onOpenChat(askInput.trim() || undefined)
+                    setAskInput('')
+                  }}
+                  className="flex items-center gap-2.5 w-[420px] h-10 px-4 rounded-pill
+                             bg-white border border-ink-200 focus-within:border-blue-400 transition-all shadow-sm"
                 >
-                  <SparkleIcon size={14} weight="regular" className="text-blue-500" />
-                  <span className="flex-1 text-[12.5px] text-ink-400">Ask Lofty AI anything…</span>
-                  <ArrowRightIcon size={14} weight="regular" className="text-ink-300" />
-                </div>
+                  <SparkleIcon size={14} weight="regular" className="text-blue-500 shrink-0" />
+                  <input
+                    type="text"
+                    value={askInput}
+                    onChange={(e) => setAskInput(e.target.value)}
+                    placeholder="Ask Lofty AI anything…"
+                    className="flex-1 bg-transparent text-[12.5px] text-ink-800 placeholder-ink-400 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 w-7 h-7 rounded-pill flex items-center justify-center transition-all
+                               text-white disabled:opacity-40"
+                    style={{ background: '#2563EB' }}
+                    aria-label="Ask"
+                  >
+                    <ArrowRightIcon size={12} weight="bold" />
+                  </button>
+                </form>
                 <p className="text-[10.5px] text-ink-400 mt-1">
                   {approvedCount > 0 && approvedCount < 3
                     ? `${approvedCount} approved · ${3 - approvedCount} pending`
@@ -355,8 +393,39 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
         </div>
         </div>
 
-        <LoftyUtilityRail onOpenChat={onOpenChat} />
       </div>
+
+      {/* AI draft modal — Scott Hayes primary flow */}
+      <AnimatePresence>
+        {draftLeadId !== null && (
+          <DraftModal
+            leadId={draftLeadId}
+            onClose={() => setDraftLeadId(null)}
+            onSent={(name) => {
+              markApproved('scott', `Message sent to ${name}`)
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key={toast}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.25 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30
+                       inline-flex items-center gap-2 h-10 px-4 rounded-pill
+                       bg-ink-900 text-white text-[12.5px] font-medium shadow-lg"
+          >
+            <span className="w-1.5 h-1.5 rounded-pill bg-emerald-400" />
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

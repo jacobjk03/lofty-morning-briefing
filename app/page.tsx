@@ -20,7 +20,7 @@ const TABS: { id: Screen; label: string }[] = [
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('after')
-  const [afterKey, setAfterKey] = useState(0)
+  const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null)
 
   // DB state
   const [briefing, setBriefing] = useState<any>(null)
@@ -63,37 +63,42 @@ export default function Home() {
   }, [])
 
   const goTo = (s: Screen) => {
-    if (s === 'after') setAfterKey((k) => k + 1)
     setScreen(s)
+  }
+
+  const openChatWith = (text?: string) => {
+    if (text && text.trim()) {
+      setChatPrefill({ text: text.trim(), nonce: Date.now() })
+    }
+    goTo('chat')
   }
 
   return (
     <div className="flex flex-col" style={{ height: '100dvh', overflow: 'hidden', background: '#f3f4f8' }}>
-      {/* Top toggle bar — light, matches Lofty style */}
-      <div className="flex items-center gap-4 px-5 py-2.5 border-b border-ink-200 shrink-0 bg-white">
-        <div className="flex items-center gap-2 mr-2">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-pill bg-blue-500" />
-            <span className="text-[10.5px] font-semibold tracking-wider2 text-ink-700">LOFTY AI</span>
-          </span>
-          <span className="text-ink-300 text-xs">/</span>
-          <span className="text-[10px] text-ink-400 font-medium tracking-tight hidden md:inline">GlobeHack '26 demo</span>
+      {/* Top toggle bar — minimal */}
+      <div className="relative flex items-center gap-5 px-5 py-2 border-b border-ink-200/70 shrink-0 bg-white/80 backdrop-blur">
+        <div className="flex items-center gap-1.5 mr-1">
+          <span className="w-1.5 h-1.5 rounded-pill bg-blue-500" />
+          <span className="text-[10.5px] font-semibold tracking-wider2 text-ink-800">LOFTY AI</span>
         </div>
 
-        <div className="flex items-center bg-ink-100 border border-ink-200 rounded-pill p-0.5 gap-0.5">
+        <nav className="flex items-center gap-0.5">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => goTo(tab.id)}
-              className={`px-3 h-7 rounded-pill text-[11px] font-semibold whitespace-nowrap transition-all
+              className={`relative px-2.5 h-7 rounded-md text-[11.5px] font-medium whitespace-nowrap transition-colors
                 ${screen === tab.id
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-ink-500 hover:text-ink-800 hover:bg-white/60'}`}
+                  ? 'text-ink-900'
+                  : 'text-ink-400 hover:text-ink-700'}`}
             >
               {tab.label}
+              {screen === tab.id && (
+                <span className="absolute left-2.5 right-2.5 -bottom-[9px] h-[2px] rounded-full bg-ink-900" />
+              )}
             </button>
           ))}
-        </div>
+        </nav>
 
         <style>{`
           @keyframes naviaGlow {
@@ -134,8 +139,8 @@ export default function Home() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden md:inline text-[10px] text-ink-400 font-medium tracking-tight">
-            Reimagining first-experience · ASU ACM
+          <span className="hidden md:inline text-[10px] text-ink-300 font-medium tracking-tight">
+            GlobeHack '26 · ASU ACM
           </span>
         </div>
       </div>
@@ -147,9 +152,8 @@ export default function Home() {
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'after' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <AfterScreen
-            key={afterKey}
             onViewLead={() => goTo('lead')}
-            onOpenChat={() => goTo('chat')}
+            onOpenChat={(text) => openChatWith(text)}
             onOpenDashboard={() => goTo('dashboard')}
             briefingData={briefing}
             leads={leads}
@@ -182,7 +186,10 @@ export default function Home() {
           <PitchMode />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'chat' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <AIAssistant />
+          <AIAssistant
+            onNavigate={(target) => goTo(target as Screen)}
+            initialInput={chatPrefill}
+          />
         </div>
       </div>
     </div>

@@ -1,5 +1,15 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
+import {
+  SparkleIcon,
+  PaperPlaneTiltIcon,
+  PencilSimpleIcon,
+  XIcon,
+  ClockCountdownIcon,
+  ArrowCounterClockwiseIcon,
+  CheckCircleIcon,
+} from '@phosphor-icons/react'
 
 interface DraftModalProps {
   leadId: number
@@ -27,135 +37,188 @@ export default function DraftModal({ leadId, onClose, onSent }: DraftModalProps)
         setPhase('editing')
       })
       .catch(() => {
-        setDraft("Hey! I noticed you've been checking out some listings — happy to help you find the right fit. Want to set up a quick call this week?")
+        setDraft("Hey! I noticed you've been checking listings — want me to hold a showing slot this week?")
         setLeadName('Lead')
         setPhase('editing')
       })
   }, [leadId])
 
-  // Focus textarea when edit mode activates
   useEffect(() => {
     if (editMode) textareaRef.current?.focus()
   }, [editMode])
 
-  // Close on backdrop click
   const handleBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose()
   }
 
+  const firstName = leadName.split(' ')[0] || 'there'
+  const subject =
+    phase === 'editing'
+      ? `Quick follow-up for ${firstName}`
+      : ''
+
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(11, 18, 32, 0.55)', backdropFilter: 'blur(8px)' }}
       onClick={handleBackdrop}
     >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up"
-        style={{ animationDuration: '0.25s' }}
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-xl bg-white rounded-[18px] overflow-hidden relative"
+        style={{
+          border: '1px solid rgba(15,23,42,0.06)',
+          boxShadow:
+            '0 24px 64px -16px rgba(15,23,42,0.30), 0 8px 24px -12px rgba(15,23,42,0.18), inset 0 1px 0 rgba(255,255,255,0.6)',
+        }}
       >
-        {/* Header */}
-        <div
-          className="px-5 py-4 flex items-center justify-between"
-          style={{ background: 'linear-gradient(135deg, #1e40af, #2563eb)' }}
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 w-7 h-7 rounded-pill flex items-center justify-center text-ink-400 hover:bg-ink-100 hover:text-ink-800 transition-colors"
+          aria-label="Close"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-              <span className="text-white text-sm">✦</span>
+          <XIcon size={14} weight="regular" />
+        </button>
+
+        {phase === 'loading' ? (
+          <div className="px-10 py-14 flex flex-col items-center text-center">
+            <div className="relative w-14 h-14 rounded-pill flex items-center justify-center mb-5"
+                 style={{
+                   background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 60%, #1E293B 100%)',
+                   boxShadow: '0 0 0 4px rgba(37,99,235,0.08), 0 12px 40px -8px rgba(37,99,235,0.35)',
+                 }}>
+              <SparkleIcon size={18} weight="fill" className="text-white" />
+              <span className="absolute inset-0 rounded-pill border border-blue-200/70 animate-ping" />
             </div>
-            <div>
-              <p className="text-white font-semibold text-sm">AI Draft Message</p>
-              {leadName && phase === 'editing' && (
-                <p className="text-blue-200 text-xs">To: {leadName}</p>
-              )}
-            </div>
+            <h2 className="font-headline font-bold text-[22px] tracking-tightest text-ink-900 italic">
+              Drafting for {firstName}…
+            </h2>
+            <p className="text-[12.5px] text-ink-500 mt-1.5 max-w-xs">
+              Reading live activity · composing a personalized follow-up
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-5">
-          {phase === 'loading' ? (
-            <div className="py-8 flex flex-col items-center gap-4">
-              {/* Spinner */}
-              <div className="relative w-12 h-12">
-                <div
-                  className="absolute inset-0 rounded-full border-4 border-blue-100"
-                />
-                <div
-                  className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent"
-                  style={{ animation: 'spin 0.8s linear infinite' }}
-                />
+        ) : (
+          <div>
+            {/* Status header */}
+            <div className="px-8 pt-8 pb-5 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-pill mb-4"
+                   style={{
+                     background: 'rgba(37,99,235,0.08)',
+                     border: '1px solid rgba(37,99,235,0.14)',
+                   }}>
+                <CheckCircleIcon size={22} weight="fill" className="text-blue-600" />
               </div>
-              <div className="text-center">
-                <p className="text-gray-800 font-semibold text-sm">
-                  ✦ AI is personalizing your message...
-                </p>
-                <p className="text-gray-400 text-xs mt-1">
-                  Reading lead activity from database
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="animate-fade-in">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Personalized draft
-                </p>
-                <span className="text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
-                  AI generated
-                </span>
-              </div>
-
-              {editMode ? (
-                <textarea
-                  ref={textareaRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  rows={4}
-                  className="w-full text-sm text-gray-800 leading-relaxed bg-gray-50 border border-blue-300 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <p className="text-sm text-gray-800 leading-relaxed">{draft}</p>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 mt-4">
-                <button
-                  onClick={() => setEditMode(!editMode)}
-                  className="flex items-center gap-1.5 border border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-600 text-sm font-medium py-2.5 px-4 rounded-xl transition-colors"
-                >
-                  <span>{editMode ? '👁' : '✏️'}</span>
-                  {editMode ? 'Preview' : 'Edit'}
-                </button>
-                <button
-                  onClick={() => {
-                    onSent(leadName)
-                    onClose()
-                  }}
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-colors shadow-sm"
-                >
-                  Send Now
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              </div>
-
-              <p className="text-center text-xs text-gray-400 mt-3">
-                Personalized using live CRM activity data
+              <h2 className="font-headline font-bold text-[24px] tracking-tightest text-ink-900 italic leading-[1.1]">
+                Drafting complete
+              </h2>
+              <p className="text-[12.5px] text-ink-500 mt-1.5">
+                Ready for your review before sending to <span className="text-ink-800 font-medium">{leadName}</span>.
               </p>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+
+            {/* Preview card */}
+            <div className="mx-6 mb-5 rounded-2xl overflow-hidden"
+                 style={{
+                   background: '#FAFBFC',
+                   border: '1px solid rgba(195,198,215,0.35)',
+                   boxShadow: '0 1px 0 rgba(255,255,255,0.8) inset, 0 8px 20px -12px rgba(15,23,42,0.10)',
+                 }}>
+              <div className="px-6 pt-5 pb-3 border-b border-ink-200/50">
+                <div className="inline-flex items-center gap-1.5 text-[9.5px] uppercase tracking-wider2 font-semibold text-ink-400 mb-3">
+                  <SparkleIcon size={11} weight="regular" className="text-blue-500" />
+                  Text preview
+                </div>
+                <div className="space-y-1">
+                  <div className="flex text-[12px]">
+                    <span className="text-ink-400 w-14">To</span>
+                    <span className="font-semibold text-ink-800">{leadName}</span>
+                  </div>
+                  <div className="flex text-[12px]">
+                    <span className="text-ink-400 w-14">Subject</span>
+                    <span className="font-semibold text-ink-800">{subject}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-5">
+                {editMode ? (
+                  <textarea
+                    ref={textareaRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    rows={5}
+                    className="w-full text-[13.5px] text-ink-800 leading-[1.65] bg-transparent resize-none focus:outline-none"
+                  />
+                ) : (
+                  <p className="text-[13.5px] text-ink-800 leading-[1.65] whitespace-pre-wrap">
+                    {draft}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 pb-5 flex gap-2.5">
+              <button
+                onClick={() => {
+                  onSent(leadName)
+                  onClose()
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-xl
+                           text-white text-[13px] font-semibold tracking-tight
+                           transition-transform active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+                  boxShadow:
+                    'inset 0 1px 0 rgba(255,255,255,0.28), 0 10px 24px -10px rgba(37,99,235,0.55)',
+                }}
+              >
+                <PaperPlaneTiltIcon size={14} weight="fill" />
+                Send now
+              </button>
+              <button
+                onClick={() => setEditMode((v) => !v)}
+                className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-xl
+                           bg-white border border-ink-200 text-ink-700 text-[13px] font-semibold
+                           hover:bg-ink-50 hover:border-ink-300 transition-all active:scale-[0.98]"
+              >
+                <PencilSimpleIcon size={14} weight="regular" />
+                {editMode ? 'Preview' : 'Edit draft'}
+              </button>
+            </div>
+
+            {/* Secondary row */}
+            <div className="px-6 pb-6 flex items-center justify-center gap-5 border-t border-ink-100 pt-4">
+              <button
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider2 font-semibold text-ink-400 hover:text-ink-800 transition-colors"
+              >
+                <ArrowCounterClockwiseIcon size={12} weight="regular" />
+                Discard
+              </button>
+              <span className="w-1 h-1 rounded-pill bg-ink-200" />
+              <button
+                onClick={() => {
+                  onSent(leadName)
+                  onClose()
+                }}
+                className="inline-flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider2 font-semibold text-ink-400 hover:text-ink-800 transition-colors"
+              >
+                <ClockCountdownIcon size={12} weight="regular" />
+                Schedule later
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   )
 }

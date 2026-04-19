@@ -13,14 +13,17 @@ import {
 interface LoftyUtilityRailProps {
   /** Opens Conversation / Lofty AI chat (quick access, same as top tab) */
   onOpenChat?: () => void
-  /** Highlight which affordance is “active” in the demo */
+  /** Highlight which affordance is "active" in the demo */
   active?: 'ai' | null
+  /** Mock toast for rail affordances that are demo-only */
+  onMockAction?: (label: string) => void
 }
 
 const BTN =
   'w-8 h-8 flex items-center justify-center rounded-md transition-colors text-ink-500 hover:text-ink-800 hover:bg-ink-100 focus:outline-none'
 
-export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRailProps) {
+export default function LoftyUtilityRail({ onOpenChat, active, onMockAction }: LoftyUtilityRailProps) {
+  const mock = (label: string) => onMockAction?.(label)
   return (
     <aside
       className="shrink-0 w-11 border-l border-ink-200 bg-white flex flex-col items-center py-3 gap-3"
@@ -30,7 +33,7 @@ export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRai
         type="button"
         className={BTN}
         title="Profile"
-        onClick={() => {}}
+        onClick={() => mock('Profile · signed in as Baylee')}
       >
         <UserCircleIcon size={17} weight="regular" />
       </button>
@@ -48,7 +51,7 @@ export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRai
         type="button"
         className={BTN}
         title="Dialer"
-        onClick={() => {}}
+        onClick={() => mock('Dialer ready · dial from any lead')}
       >
         <PhoneIcon size={17} weight="regular" />
       </button>
@@ -57,7 +60,7 @@ export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRai
         type="button"
         className={BTN}
         title="Messages"
-        onClick={() => {}}
+        onClick={() => mock('Inbox · 3 unread conversations')}
       >
         <TrayIcon size={17} weight="regular" />
       </button>
@@ -66,7 +69,7 @@ export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRai
         type="button"
         className={BTN}
         title="Notifications"
-        onClick={() => {}}
+        onClick={() => mock('No new alerts')}
       >
         <BellIcon size={17} weight="regular" />
       </button>
@@ -75,7 +78,7 @@ export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRai
         type="button"
         className={BTN}
         title="Help"
-        onClick={() => {}}
+        onClick={() => mock('Ask Lofty AI — fastest path to help')}
       >
         <QuestionIcon size={17} weight="regular" />
       </button>
@@ -84,7 +87,7 @@ export default function LoftyUtilityRail({ onOpenChat, active }: LoftyUtilityRai
         type="button"
         className={BTN}
         title="Settings"
-        onClick={() => {}}
+        onClick={() => mock('Settings · account preferences')}
       >
         <GearSixIcon size={17} weight="regular" />
       </button>

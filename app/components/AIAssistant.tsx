@@ -1,7 +1,16 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
-import { SparkleIcon, ArrowUpIcon } from '@phosphor-icons/react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  SparkleIcon,
+  ArrowUpIcon,
+  PaperclipIcon,
+  NotePencilIcon,
+  CalendarPlusIcon,
+  ClockCounterClockwiseIcon,
+  UserCircleIcon,
+  ArrowRightIcon,
+} from '@phosphor-icons/react'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -9,21 +18,75 @@ interface Message {
 }
 
 const STARTERS = [
-  'Who should I call first?',
   "What's urgent today?",
-  'Draft a text to Scott Hayes',
+  'Open Scott Hayes',
   'Status of Johnson closing?',
+  'Take me to my briefing',
 ]
 
-export default function AIAssistant() {
+const FOLLOWUP_CHIPS = [
+  { label: 'Draft follow-up', Icon: NotePencilIcon },
+  { label: 'Schedule a call', Icon: CalendarPlusIcon },
+  { label: 'See full activity', Icon: ClockCounterClockwiseIcon },
+]
+
+type NavTarget = 'after' | 'lead' | 'pitch' | 'chat' | 'dashboard' | 'before'
+
+interface Intent {
+  target: NavTarget
+  label: string
+}
+
+function detectIntent(text: string): Intent | null {
+  const t = text.toLowerCase()
+  if (/\b(scott|hayes|lead detail|open lead|lead page|view lead)\b/.test(t))
+    return { target: 'lead', label: 'Scott Hayes' }
+  if (/\b(briefing|morning|today'?s agenda|lofty ai home|go back)\b/.test(t))
+    return { target: 'after', label: 'the morning briefing' }
+  if (/\b(dashboard|crm|everything|full view|all widgets|old lofty)\b/.test(t))
+    return { target: 'dashboard', label: 'the full dashboard' }
+  if (/\b(pitch|deck|demo slide)\b/.test(t))
+    return { target: 'pitch', label: 'the pitch' }
+  return null
+}
+
+function topicFromText(text: string): string {
+  const t = text.toLowerCase()
+  if (/scott|hayes|lead/.test(t)) return 'Scott Hayes strategy'
+  if (/johnson|closing/.test(t)) return 'Johnson closing'
+  if (/bloom|smart plan/.test(t)) return 'Bloom Smart Plan'
+  return 'Today'
+}
+
+function splitReply(content: string): { lead: string; callout?: string; tail?: string } {
+  const paras = content.split(/\n{2,}|\.\s{2,}/).map(s => s.trim()).filter(Boolean)
+  if (paras.length >= 3) {
+    return { lead: paras[0] + '.', callout: paras[1] + '.', tail: paras.slice(2).join(' ') }
+  }
+  if (paras.length === 2) {
+    return { lead: paras[0] + '.', callout: paras[1] + '.' }
+  }
+  const sentences = content.split(/(?<=\.)\s+/).filter(Boolean)
+  if (sentences.length >= 3) {
+    return {
+      lead: sentences[0],
+      callout: sentences.slice(1, 2).join(' '),
+      tail: sentences.slice(2).join(' '),
+    }
+  }
+  return { lead: content }
+}
+
+interface AIAssistantProps {
+  onNavigate?: (target: NavTarget) => void
+  initialInput?: { text: string; nonce: number } | null
+}
+
+export default function AIAssistant({ onNavigate, initialInput }: AIAssistantProps = {}) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  const lastPrefillNonce = useRef<number | null>(null)
 
   const send = async (text: string) => {
     const trimmed = text.trim()
@@ -31,6 +94,17 @@ export default function AIAssistant() {
     const newMessages: Message[] = [...messages, { role: 'user', content: trimmed }]
     setMessages(newMessages)
     setInput('')
+
+    const intent = onNavigate ? detectIntent(trimmed) : null
+    if (intent) {
+      setMessages([
+        ...newMessages,
+        { role: 'assistant', content: `Opening ${intent.label} for you now.` },
+      ])
+      setTimeout(() => onNavigate!(intent.target), 900)
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch('/api/chat', {
@@ -43,148 +117,274 @@ export default function AIAssistant() {
     } catch {
       setMessages([
         ...newMessages,
-        { role: 'assistant', content: "I'm having trouble connecting. Check that GROQ_API_KEY is set in .env.local." },
+        { role: 'assistant', content: "I'm having trouble connecting — try again in a moment." },
       ])
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="flex flex-col h-full bg-[#f3f4f8]">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-ink-200 bg-white shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-               style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
-            <SparkleIcon size={12} weight="fill" className="text-white/90" />
-          </div>
-          <div>
-            <p className="text-[12px] font-semibold text-ink-800 leading-none">Lofty AI</p>
-            <p className="text-[10px] text-ink-400 mt-0.5">Ask me anything about your day</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-pill bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] text-ink-400 font-medium">Online</span>
-        </div>
-      </div>
+  useEffect(() => {
+    if (!initialInput) return
+    if (lastPrefillNonce.current === initialInput.nonce) return
+    lastPrefillNonce.current = initialInput.nonce
+    send(initialInput.text)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialInput])
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto chat-scroll">
-        <div className="max-w-3xl mx-auto px-6 py-8">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center text-center pt-6">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 shadow-md"
-                   style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
-                <SparkleIcon size={22} weight="fill" className="text-white/90" />
+  // No forced scroll — editorial layout stays put; user scrolls manually.
+
+  const hasConversation = messages.length > 0
+  const lastUser = useMemo(
+    () => [...messages].reverse().find((m) => m.role === 'user') || null,
+    [messages]
+  )
+  const topic = lastUser ? topicFromText(lastUser.content) : 'Today'
+
+  const mode = useMemo(() => {
+    if (!lastUser) return 'Ready'
+    const t = lastUser.content.toLowerCase()
+    if (/scott|hayes|lead/.test(t)) return 'Strategic advisor'
+    if (/urgent|today|call|first/.test(t)) return 'Priority triage'
+    if (/johnson|closing/.test(t)) return 'Transaction ops'
+    return 'Assistant'
+  }, [lastUser])
+
+  return (
+    <div className="flex flex-col h-full relative overflow-hidden bg-[#f7f9fb]">
+      {/* Ambient orbs */}
+      <div
+        className="pointer-events-none absolute -top-24 -right-24 w-[440px] h-[440px] rounded-pill"
+        style={{ background: '#2563eb', filter: 'blur(120px)', opacity: 0.08, zIndex: 0 }}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-32 -left-24 w-[380px] h-[380px] rounded-pill"
+        style={{ background: '#67E8F9', filter: 'blur(130px)', opacity: 0.08, zIndex: 0 }}
+      />
+
+      {/* Scroll canvas */}
+      <div className="flex-1 min-h-0 overflow-y-auto relative z-10">
+        <div className="max-w-[720px] mx-auto w-full px-8 pt-14 pb-40">
+          {!hasConversation ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="text-center flex flex-col items-center"
+            >
+              <div
+                className="relative w-16 h-16 rounded-pill flex items-center justify-center mb-6"
+                style={{
+                  background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 60%, #0B1220 100%)',
+                  boxShadow: '0 0 0 8px rgba(37,99,235,0.05), 0 14px 40px -10px rgba(37,99,235,0.35)',
+                }}
+              >
+                <SparkleIcon size={22} weight="fill" className="text-white" />
+                <span className="absolute inset-0 rounded-pill border border-blue-200/50 animate-ping" />
               </div>
-              <h2 className="text-ink-900 text-[22px] font-semibold tracking-tightest">Hi Baylee! 👋</h2>
-              <p className="text-ink-500 text-[13px] mt-2 max-w-sm">
-                I know your leads, transactions, Smart Plans and inbox. Ask me anything.
+              <div className="text-[10px] font-semibold tracking-wider2 uppercase text-blue-600/70 mb-3">
+                Lofty AI · Ready
+              </div>
+              <h1 className="font-headline font-bold italic text-[38px] md:text-[46px] tracking-tightest text-ink-900 leading-[1.05]">
+                How can I help, Baylee?
+              </h1>
+              <p className="mt-4 text-[14px] text-ink-500 max-w-md">
+                I know your leads, transactions, Smart Plans, and inbox. Ask a question — or tell me where to go.
               </p>
-              <div className="flex flex-wrap gap-2 justify-center mt-7 max-w-xl">
+              <div className="flex flex-wrap gap-2 justify-center mt-10">
                 {STARTERS.map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="inline-flex items-center h-9 px-4 rounded-pill text-[12px] font-medium
-                               text-blue-700 bg-white border border-blue-200
-                               hover:border-blue-400 hover:bg-blue-50 transition-all shadow-sm"
+                    className="inline-flex items-center h-10 px-4 rounded-pill text-[12.5px] font-medium
+                               text-ink-700 bg-white border border-ink-200
+                               hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm"
                   >
                     {s}
                   </button>
                 ))}
               </div>
-            </div>
+            </motion.div>
           ) : (
-            <div className="space-y-5">
-              {messages.map((msg, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  {msg.role === 'assistant' && (
-                    <div className="shrink-0 mr-3 mt-1">
-                      <div className="w-7 h-7 rounded-pill flex items-center justify-center"
-                           style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
-                        <SparkleIcon size={12} weight="fill" className="text-white/90" />
+            <div className="space-y-16">
+              <AnimatePresence initial={false}>
+                {messages.map((msg, i) =>
+                  msg.role === 'user' ? (
+                    <motion.div
+                      key={`u-${i}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className="flex flex-col items-end"
+                    >
+                      <div className="max-w-[86%] text-right">
+                        <span className="text-[10px] font-bold tracking-wider2 text-ink-300 uppercase mb-2 block">
+                          {topicFromText(msg.content)}
+                        </span>
+                        <h2 className="font-headline font-bold italic text-[26px] md:text-[30px] tracking-tightest text-ink-900 leading-[1.15]">
+                          {msg.content}
+                        </h2>
                       </div>
-                    </div>
-                  )}
-                  <div
-                    className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-[13.5px] leading-[1.55] ${
-                      msg.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-sm shadow-sm'
-                        : 'bg-white text-ink-800 border border-ink-200 rounded-bl-sm shadow-sm'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
-                </motion.div>
-              ))}
-              <AnimatePresence>
-                {loading && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="w-7 h-7 rounded-pill flex items-center justify-center"
-                         style={{
-                           background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)',
-                         }}>
-                      <SparkleIcon size={12} weight="fill" className="text-white/90" />
-                    </div>
-                    <div className="bg-white border border-ink-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key={`a-${i}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.05 }}
+                      className="flex flex-col items-start"
+                    >
+                      <div className="flex items-center gap-2 mb-5">
+                        <SparkleIcon size={14} weight="fill" className="text-blue-600" />
+                        <span className="text-[10px] font-bold tracking-wider2 uppercase text-blue-600">
+                          Lofty AI · Recommendation
+                        </span>
+                      </div>
+
+                      <AssistantBody content={msg.content} />
+
+                      {/* Action buttons below the last assistant message only */}
+                      {i === messages.length - 1 && (
+                        <div className="mt-8 flex flex-wrap gap-2.5">
+                          {FOLLOWUP_CHIPS.map(({ label, Icon }) => (
+                            <button
+                              key={label}
+                              onClick={() => send(label)}
+                              className="inline-flex items-center gap-2 h-10 px-4 rounded-pill
+                                         bg-white border border-ink-200 text-ink-700 text-[12.5px] font-semibold
+                                         hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm"
+                            >
+                              <Icon size={14} weight="regular" />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )
                 )}
               </AnimatePresence>
-              <div ref={bottomRef} />
+
+              {loading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center gap-2 text-ink-400"
+                >
+                  <span className="w-1.5 h-1.5 rounded-pill bg-blue-500 animate-pulse" />
+                  <span className="text-[11.5px] font-medium tracking-tight">Thinking…</span>
+                </motion.div>
+              )}
+
             </div>
           )}
         </div>
       </div>
 
-      {/* Input */}
-      <div className="border-t border-ink-200 bg-white p-4 shrink-0">
-        <form
-          onSubmit={(e) => { e.preventDefault(); send(input) }}
-          className="max-w-3xl mx-auto"
-        >
-          <div className="flex items-center gap-2 bg-ink-50 border border-ink-200 rounded-pill pl-4 pr-1.5 h-11
-                          focus-within:border-blue-400 focus-within:bg-white transition-all">
-            <SparkleIcon size={15} weight="regular" className="text-blue-500" />
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask Lofty AI anything…"
-              disabled={loading}
-              className="flex-1 bg-transparent text-[13px] text-ink-800 placeholder-ink-400 focus:outline-none"
+      {/* Floating bottom input bar */}
+      <div
+        className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(to top, #f7f9fb 0%, #f7f9fb 60%, rgba(247,249,251,0.7) 85%, transparent 100%)',
+        }}
+      >
+        <div className="max-w-[720px] mx-auto px-8 pb-7 pt-10 pointer-events-auto">
+          <div className="relative">
+            {/* Glow halo */}
+            <div
+              className="absolute inset-0 rounded-pill pointer-events-none"
+              style={{ background: '#2563eb', filter: 'blur(42px)', opacity: 0.10 }}
             />
-            <button
-              type="submit"
-              disabled={!input.trim() || loading}
-              className="w-8 h-8 flex items-center justify-center rounded-pill transition-all
-                         disabled:opacity-30 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white"
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                send(input)
+              }}
+              className="relative flex items-center gap-1.5 h-14 pl-4 pr-2 rounded-pill bg-white border border-ink-200
+                         shadow-[0_14px_40px_-16px_rgba(15,23,42,0.18)]
+                         focus-within:border-blue-400 focus-within:shadow-[0_14px_40px_-10px_rgba(37,99,235,0.28)] transition-all"
             >
-              <ArrowUpIcon size={16} weight="bold" />
-            </button>
+              <button
+                type="button"
+                className="w-9 h-9 shrink-0 rounded-pill flex items-center justify-center text-ink-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                aria-label="Attach"
+              >
+                <PaperclipIcon size={16} weight="regular" />
+              </button>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask Lofty AI for the next step…"
+                disabled={loading}
+                autoFocus
+                className="flex-1 bg-transparent text-[14px] text-ink-900 placeholder-ink-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || loading}
+                className="w-10 h-10 shrink-0 rounded-pill flex items-center justify-center transition-all
+                           text-white disabled:opacity-35 disabled:cursor-not-allowed hover:brightness-110 active:scale-95"
+                style={{
+                  background: input.trim() ? 'linear-gradient(180deg, #2563EB, #1D4ED8)' : '#CBD5E1',
+                  boxShadow: input.trim()
+                    ? 'inset 0 1px 0 rgba(255,255,255,0.28), 0 8px 20px -8px rgba(37,99,235,0.5)'
+                    : 'none',
+                }}
+                aria-label="Send"
+              >
+                <ArrowUpIcon size={16} weight="bold" />
+              </button>
+            </form>
+
+            {/* Meta */}
+            <div className="mt-3 flex justify-center gap-6">
+              <div className="text-[9.5px] uppercase tracking-wider2 font-semibold text-ink-300">
+                Context <span className="text-ink-500 ml-1 tracking-tight normal-case">{topic}</span>
+              </div>
+              <div className="text-[9.5px] uppercase tracking-wider2 font-semibold text-ink-300">
+                Mode <span className="text-ink-500 ml-1 tracking-tight normal-case">{mode}</span>
+              </div>
+            </div>
           </div>
-          <p className="text-center text-[10.5px] text-ink-400 mt-2">
-            Powered by Lofty AI · llama-3.3-70b via Groq
-          </p>
-        </form>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function AssistantBody({ content }: { content: string }) {
+  const parts = useMemo(() => splitReply(content), [content])
+  return (
+    <div className="space-y-5 w-full">
+      <p className="text-[17px] md:text-[18px] leading-[1.6] text-ink-700">
+        {parts.lead}
+      </p>
+
+      {parts.callout && (
+        <div
+          className="rounded-2xl p-6 md:p-7"
+          style={{
+            background: '#eceef0',
+            border: '1px solid rgba(195,198,215,0.45)',
+          }}
+        >
+          <h3 className="font-headline font-bold italic text-[17px] tracking-tightest text-ink-900 mb-2">
+            Strategic insight
+          </h3>
+          <p className="text-[14.5px] text-ink-700 leading-[1.65]">
+            {parts.callout}
+          </p>
+        </div>
+      )}
+
+      {parts.tail && (
+        <p className="text-[16px] md:text-[17px] leading-[1.6] text-ink-600">
+          {parts.tail}
+        </p>
+      )}
     </div>
   )
 }
