@@ -21,6 +21,7 @@ import { useVoice } from '../hooks/useVoice'
 interface AfterScreenProps {
   onViewLead: () => void
   onOpenChat: () => void
+  onOpenDashboard: () => void
   briefingData?: any
   leads?: any[]
 }
@@ -73,7 +74,7 @@ const CARDS = [
 
 type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
 
-export default function AfterScreen({ onViewLead, onOpenChat, briefingData, leads }: AfterScreenProps) {
+export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, briefingData, leads }: AfterScreenProps) {
   const BRIEFING = briefingData?.briefingText || BRIEFING_DEFAULT
 
   const cards = CARDS.map((card, i) => {

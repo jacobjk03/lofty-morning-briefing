@@ -108,7 +108,34 @@ export default function Home() {
           <BeforeScreen leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'after' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <AfterScreen key={afterKey} onViewLead={() => goTo('lead')} onOpenChat={() => goTo('chat')} briefingData={briefing} leads={leads} />
+          <AfterScreen
+            key={afterKey}
+            onViewLead={() => goTo('lead')}
+            onOpenChat={() => goTo('chat')}
+            onOpenDashboard={() => goTo('dashboard')}
+            briefingData={briefing}
+            leads={leads}
+          />
+        </div>
+        <div
+          className={`absolute inset-0 transition-opacity duration-300 flex flex-col bg-[#f3f4f8] ${
+            screen === 'dashboard' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'
+          }`}
+        >
+          <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-ink-200 bg-white">
+            <button
+              type="button"
+              onClick={() => goTo('after')}
+              className="text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              ← Back to Morning Briefing
+            </button>
+            <span className="text-ink-300">|</span>
+            <span className="text-[12px] text-ink-500">My Dashboard</span>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <BeforeScreen leads={leads} transactions={transactions} listings={listings} tasks={tasks} appointments={appointments} />
+          </div>
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'lead' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <LeadDetail onBack={() => goTo('after')} />
