@@ -7,13 +7,15 @@ const AfterScreen = dynamic(() => import('./components/AfterScreen'), { ssr: fal
 const LeadDetail = dynamic(() => import('./components/LeadDetail'), { ssr: false })
 const PitchMode = dynamic(() => import('./components/PitchMode'), { ssr: false })
 const AIAssistant = dynamic(() => import('./components/AIAssistant'), { ssr: false })
+const AIAgents = dynamic(() => import('./components/AIAgents'), { ssr: false })
 
-type Screen = 'before' | 'after' | 'lead' | 'pitch' | 'chat' | 'dashboard'
+type Screen = 'before' | 'after' | 'lead' | 'agents' | 'pitch' | 'chat' | 'dashboard'
 
 const TABS: { id: Screen; label: string }[] = [
   { id: 'before', label: 'Today' },
   { id: 'after', label: 'Lofty AI' },
   { id: 'lead', label: 'Lead detail' },
+  { id: 'agents', label: 'AI Agents' },
   { id: 'chat', label: 'Conversation' },
   { id: 'pitch', label: 'Pitch' },
 ]
@@ -105,37 +107,53 @@ export default function Home() {
             0%, 100% { text-shadow: 0 0 8px #C4622D, 0 0 16px #C4622D; color: #C4622D; }
             50% { text-shadow: 0 0 20px #C4622D, 0 0 40px #C4622D, 0 0 60px #C4622D; color: #d4733d; }
           }
-          @keyframes sparkleSpin {
-            0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.3); }
-            100% { transform: rotate(360deg) scale(1); }
+          @keyframes sparkleTwinkle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(20deg); }
           }
           @keyframes fadeInNav {
             from { opacity: 0; transform: translateY(-4px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          .navia-sparkle { display: inline-block; animation: sparkleSpin 3s ease-in-out infinite; color: #C4622D; }
-          .navia-word { animation: naviaGlow 2s ease-in-out infinite; }
-          .navia-word:hover { color: #d4733d !important; }
+          .navia-sparkle { display: inline-block; animation: sparkleTwinkle 3s ease-in-out infinite; color: #C4622D; line-height: 1; }
+          .navia-word { animation: naviaGlow 2s ease-in-out infinite; text-decoration: none; }
+          .navia-word:hover { text-decoration: underline; }
           .navia-wrapper { opacity: 0; animation: fadeInNav 0.8s ease-out 0.5s forwards; }
         `}</style>
 
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
-          <span className="navia-wrapper flex items-center gap-1.5 pointer-events-auto">
-            <span className="navia-sparkle" style={{ fontSize: 13 }}>✦</span>
-            <span style={{ fontSize: 15, color: '#1e2a4a', fontWeight: 500, borderLeft: '2px solid #C4622D', paddingLeft: 8 }}>
+        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
+          <div
+            className="navia-wrapper pointer-events-auto flex items-center gap-2"
+            style={{
+              background: '#fafafa',
+              border: '1px solid #f3f4f6',
+              borderRadius: 8,
+              padding: '6px 14px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}
+          >
+            <svg className="navia-sparkle" width="22" height="20" viewBox="0 0 28 24" fill="#C4622D" style={{ flexShrink: 0 }}>
+              {/* Large star */}
+              <path d="M8 5 L9.54 10.46 L15 12 L9.54 13.54 L8 19 L6.46 13.54 L1 12 L6.46 10.46 Z"/>
+              {/* Medium star */}
+              <path d="M19 1 L20.1 4.9 L24 6 L20.1 7.1 L19 11 L17.9 7.1 L14 6 L17.9 4.9 Z"/>
+              {/* Small star */}
+              <path d="M21 14.5 L21.77 17.23 L24.5 18 L21.77 18.77 L21 21.5 L20.23 18.77 L17.5 18 L20.23 17.23 Z"/>
+            </svg>
+            <span style={{ width: 1, height: 20, background: '#e5e7eb', display: 'inline-block', margin: '0 4px' }} />
+            <span style={{ fontSize: 14, color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>
               from the team behind{' '}
               <a
                 href="https://joinnavia.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="navia-word hover:underline"
-                style={{ fontSize: 17, fontWeight: 800, textDecoration: 'none' }}
+                className="navia-word"
+                style={{ fontSize: 14, fontWeight: 700, color: '#C4622D' }}
               >
                 Navia
               </a>
             </span>
-          </span>
+          </div>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -181,6 +199,9 @@ export default function Home() {
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'lead' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <LeadDetail onBack={() => goTo('after')} />
+        </div>
+        <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'agents' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
+          <AIAgents onGoToBriefing={() => goTo('after')} onGoToChat={() => openChatWith()} />
         </div>
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'pitch' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <PitchMode />
