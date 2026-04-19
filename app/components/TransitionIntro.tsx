@@ -50,12 +50,13 @@ export default function TransitionIntro({ onDone }: TransitionIntroProps) {
       <div className="pointer-events-none absolute -bottom-40 -left-40 w-[520px] h-[520px] rounded-pill"
            style={{ background: '#67E8F9', filter: 'blur(140px)', opacity: 0.10 }} />
 
-      {/* Skip */}
+      {/* Skip — prominent pill so it never traps the viewer */}
       <button
         onClick={onDone}
-        className="absolute top-6 right-6 text-[11px] text-ink-400 hover:text-ink-700 font-medium tracking-tight transition-colors"
+        className="absolute top-5 right-6 inline-flex items-center gap-1.5 h-8 px-3.5 rounded-pill bg-white/90 backdrop-blur border border-ink-200 text-[11px] text-ink-700 font-semibold hover:text-ink-900 hover:border-ink-300 transition-all shadow-sm"
       >
-        Skip intro →
+        Skip intro
+        <span className="text-ink-400">→</span>
       </button>
 
       <div className="relative z-10 max-w-2xl w-full px-8 text-center">

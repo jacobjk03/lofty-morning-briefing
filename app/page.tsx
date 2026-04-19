@@ -56,6 +56,11 @@ export default function Home() {
     try { window.localStorage.setItem('lofty_intro_seen', '1') } catch {}
   }
 
+  /** Always replay the Before→After story when user crosses that boundary. */
+  const transitionFromBeforeToAfter = () => {
+    setIntroOpen(true)
+  }
+
   // DB state
   const [briefing, setBriefing] = useState<any>(null)
   const [leads, setLeads] = useState<any[]>([])
@@ -97,6 +102,12 @@ export default function Home() {
   }, [])
 
   const goTo = (s: Screen) => {
+    // Re-play the transition story whenever the user crosses Before → After.
+    if (screen === 'before' && s === 'after') {
+      transitionFromBeforeToAfter()
+      setScreen(s)
+      return
+    }
     setScreen(s)
   }
 

@@ -10,6 +10,8 @@ import {
   KeyboardIcon, SpeakerHighIcon, VideoIcon, PlusIcon,
   PhoneXIcon, CaretDownIcon,
 } from '@phosphor-icons/react'
+import SetupAssistant from './SetupAssistant'
+import LoftyMark from './LoftyMark'
 
 /* ── Google Fonts ── */
 const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700;900&family=Manrope:wght@400;500;600;700;800&display=swap');`
@@ -187,79 +189,30 @@ function LeadCard({ lead, idx }: { lead: typeof LEADS_DEFAULT[0]; idx: number })
           </div>
         </div>
 
-        <p className="text-[12px] text-gray-400 mb-5">{lead.sub}</p>
+        <p className="text-[12px] text-gray-400 mb-4">{lead.sub}</p>
 
-        {/* Score breakdown — 4 mini bars always visible */}
-        <div className="grid grid-cols-4 gap-2 mb-5">
-          {lead.breakdown.map(b => (
-            <div key={b.label}>
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mb-1.5">
-                <div className="h-full rounded-full transition-all" style={{ width: `${b.pct}%`, background: c.bar }} />
-              </div>
-              <span className="text-[8.5px] font-bold uppercase text-gray-400 tracking-wider">{b.label}</span>
-            </div>
-          ))}
+        {/* One-line Copilot reasoning — trust builder without clutter */}
+        <div className="flex items-start gap-2 mb-5 text-[12.5px] text-gray-600 leading-[1.5]">
+          <LoftyMark size={13} className="mt-0.5" />
+          <span><span className="font-semibold text-gray-800">Why now:</span> {lead.reasons[0]}.</span>
         </div>
 
-        {/* AI Reasoning */}
-        <div className="rounded-2xl p-4 mb-5 border border-gray-100" style={{ background: '#f8f9fd' }}>
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <SparkleIcon size={11} weight="fill" className="text-blue-500" />
-            <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-blue-500">AI Reasoning</span>
-          </div>
-          <ul className="space-y-1.5">
-            {lead.reasons.map(r => (
-              <li key={r} className="flex items-start gap-2 text-[12px] text-gray-600">
-                <span className="text-blue-400 mt-0.5 shrink-0">•</span>{r}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* AI Action chips */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          <button
-            onClick={() => setExpanded(e => !e)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-bold border transition-all"
-            style={{ border: '1px solid #bfdbfe', color: '#2563eb', background: '#eff6ff' }}
-          >
-            <PencilSimpleIcon size={11} weight="regular" />Draft Follow-up
-          </button>
-          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-bold border transition-all" style={{ border: '1px solid #bfdbfe', color: '#2563eb', background: '#eff6ff' }}>
-            <CalendarIcon size={11} weight="regular" />Prep for Showing
-          </button>
-          <button className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-bold border transition-all" style={{ border: '1px solid #bfdbfe', color: '#2563eb', background: '#eff6ff' }}>
-            <ChartBarIcon size={11} weight="regular" />Score Detail
-          </button>
-        </div>
-
-        {/* Primary actions */}
-        <div className="flex items-center gap-3">
+        {/* Primary actions — collapsed to 2 */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => { setShowDialer(d => !d); setContacted(true) }}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold text-[13px] transition-all active:scale-[0.98]"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-white font-bold text-[13px] transition-all active:scale-[0.98]"
             style={{ background: 'linear-gradient(180deg,#2563eb,#1d4ed8)', boxShadow: '0 8px 20px -6px rgba(37,99,235,0.4)' }}
           >
             <PhoneIcon size={15} weight="fill" />
-            {showDialer ? 'In Call…' : 'Call Now'}
-          </button>
-          <button
-            onClick={handleSync}
-            className={`p-3.5 rounded-2xl border transition-all ${syncState === 'done' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'}`}
-          >
-            <ArrowsClockwiseIcon size={16} weight="regular" className={syncState === 'syncing' ? 'animate-spin' : ''} />
-          </button>
-          <button
-            onClick={() => setContacted(true)}
-            className={`p-3.5 rounded-2xl border transition-all ${contacted ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'}`}
-          >
-            <CheckCircleIcon size={16} weight={contacted ? 'fill' : 'regular'} />
+            {showDialer ? 'In Call…' : 'Call Scott'}
           </button>
           <button
             onClick={() => setExpanded(e => !e)}
-            className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-gray-400 hover:bg-gray-100 transition-all"
+            className="flex items-center gap-1.5 px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-gray-600 text-[12px] font-bold hover:bg-gray-100 transition-all"
           >
-            <CaretDownIcon size={14} weight="bold" className="transition-transform duration-200" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+            {expanded ? 'Less' : 'Why?'}
+            <CaretDownIcon size={12} weight="bold" className="transition-transform duration-200" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
           </button>
         </div>
 
@@ -290,11 +243,11 @@ function LeadCard({ lead, idx }: { lead: typeof LEADS_DEFAULT[0]; idx: number })
 
             {/* AI Draft + Market Match */}
             <div className="space-y-4">
-              {/* AI Draft */}
+              {/* Copilot Draft */}
               <div className="bg-white rounded-2xl p-4 border border-gray-100">
                 <div className="flex items-center gap-1.5 mb-3">
-                  <SparkleIcon size={11} weight="fill" className="text-blue-500" />
-                  <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-blue-500">AI Draft · SMS</span>
+                  <LoftyMark size={12} />
+                  <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-blue-500">Drafted by Lofty Copilot · SMS</span>
                   <span className="ml-auto text-[9px] text-gray-400">To: {firstName}</span>
                 </div>
                 {messageSent ? (
@@ -360,6 +313,7 @@ interface Props {
 
 export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, listings: liDb, tasks: tkDb, appointments: aDb }: Props) {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false)
+  const [setupOpen, setSetupOpen] = useState(false)
 
   const leads = lDb?.length
     ? lDb.slice(0, 3).map((l: any, i: number) => ({ ...LEADS_DEFAULT[i] ?? LEADS_DEFAULT[0], name: l.name, score: l.score, location: `${l.city ?? 'Phoenix'} · ${l.type}`, status: l.score >= 80 ? 'High Intent' : l.score >= 60 ? 'Warm' : 'Nurture' }))
@@ -406,15 +360,18 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
             {/* LEFT — main */}
             <div className="lg:col-span-2 space-y-8">
 
-              {/* AI Morning Briefing */}
+              {/* Copilot Morning Briefing */}
               <section>
-                <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-blue-500 mb-2">AI Morning Briefing</p>
+                <div className="inline-flex items-center gap-2 mb-3">
+                  <LoftyMark size={14} halo />
+                  <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-blue-500">Morning briefing · Lofty Copilot</p>
+                </div>
                 <h1 className="text-[32px] md:text-[40px] font-extrabold leading-[1.1] text-gray-900 mb-3" style={{ fontFamily: "'Noto Serif', serif" }}>
                   Good morning, Baylee.{' '}
                   <span className="text-blue-600">{hot} hot leads</span> need your attention today.
                 </h1>
                 <p className="text-[14px] text-gray-400 font-light">
-                  AI reviewed {totalLeads} leads overnight — {urgentTx} transactions need immediate action.
+                  I reviewed {totalLeads} leads overnight — {urgentTx} transactions need immediate action.
                 </p>
               </section>
 
@@ -424,12 +381,15 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                   <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
                   <div className="flex-1">
                     <p className="font-bold text-[13px] mb-0.5 flex items-center gap-1.5">
-                      <SparkleIcon size={11} weight="fill" className="text-cyan-200" />
+                      <LoftyMark size={14} />
                       Finish setup with Lofty Copilot · 2 items left
                     </p>
                     <p className="text-[11px] text-white/75">Connect your dialer + sync your calendar. I'll walk you through it in 30 seconds — no guesswork.</p>
                   </div>
-                  <button className="shrink-0 h-8 px-3 rounded-full bg-white text-blue-700 text-[11px] font-extrabold hover:brightness-110 transition-all">
+                  <button
+                    onClick={() => setSetupOpen(true)}
+                    className="shrink-0 h-8 px-3 rounded-full bg-white text-blue-700 text-[11px] font-extrabold hover:brightness-110 transition-all active:scale-[0.97]"
+                  >
                     Let Copilot handle it
                   </button>
                   <button onClick={() => setOnboardingDismissed(true)} className="shrink-0 p-1.5 bg-white/15 hover:bg-white/25 rounded-full transition-colors">
@@ -475,7 +435,7 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                   ))}
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-[11px] font-bold text-blue-600">
-                  <SparkleIcon size={11} weight="fill" />AI: 2 close dates confirmed today
+                  <LoftyMark size={12} />Copilot confirmed 2 close dates today
                 </div>
               </section>
 
@@ -500,7 +460,7 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                     ))}
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100 text-[9.5px] font-bold text-blue-600 flex items-center gap-1">
-                    <SparkleIcon size={9} weight="fill" />AI drafted 4
+                    <LoftyMark size={10} />Copilot drafted 4
                   </div>
                 </div>
 
@@ -516,14 +476,14 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-white/20 text-[9.5px] font-bold text-white/60 flex items-center gap-1">
-                    <SparkleIcon size={9} weight="fill" />Route optimized
+                  <div className="mt-3 pt-3 border-t border-white/20 text-[9.5px] font-bold text-white/80 flex items-center gap-1">
+                    <LoftyMark size={10} />Copilot optimized your route
                   </div>
                 </div>
               </div>
 
-              {/* Listings */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-100" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
+              {/* Listings — kept intentionally minimal so sidebar stays calm */}
+              <div className="bg-white rounded-3xl p-5 border border-gray-100 hidden" style={{ boxShadow: '0 20px 40px rgba(25,28,31,0.04)' }}>
                 <div className="flex items-center gap-2 mb-4">
                   <HouseIcon size={15} weight="bold" className="text-blue-600" />
                   <span className="text-[11px] font-extrabold uppercase tracking-wide text-gray-700">My Listings</span>
@@ -548,6 +508,13 @@ export default function AfterDashboard({ onBack, leads: lDb, transactions: tDb, 
           </div>
         </div>
       </div>
+
+      {setupOpen && (
+        <SetupAssistant
+          onClose={() => setSetupOpen(false)}
+          onDone={() => setOnboardingDismissed(true)}
+        />
+      )}
     </div>
   )
 }
