@@ -1,234 +1,330 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
-import NavBar from './NavBar'
-import Toast from './Toast'
-
-const BRIEFING_TEXT =
-  "You have 3 high-interest leads who need immediate attention. Scott Hayes viewed the Maple Street listing 4 times — I drafted a follow-up text. The Johnson closing is in 72 hours with an open inspection note. Your Lofty Bloom Smart Plan paused due to an email bounce."
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  FlameIcon,
+  AlarmIcon,
+  LightningIcon,
+  MicrophoneIcon,
+  MicrophoneSlashIcon,
+  SparkleIcon,
+  ArrowRightIcon,
+  ArrowCounterClockwiseIcon,
+} from '@phosphor-icons/react'
+import Orb, { OrbState } from './Orb'
+import ActionCard from './ActionCard'
+import CaptionStrip from './CaptionStrip'
+import { useVoice } from '../hooks/useVoice'
 
 interface AfterScreenProps {
   onViewLead: () => void
   onOpenChat: () => void
 }
 
+const BRIEFING =
+  "Good morning Baylee. I've reviewed your leads, your transactions, your Smart Plans, and your inbox. Three things matter today. Scott Hayes viewed six-fifty Maple four times this morning — I drafted his follow-up. Your Johnson closing is seventy-two hours out with an open inspection note. And your Bloom outreach paused because two leads bounced. Three moves. Say go, or approve the ones you want."
+
+const CARDS = [
+  {
+    id: 'scott',
+    icon: FlameIcon,
+    kicker: 'Hot lead',
+    title: 'Scott Hayes · 92',
+    meta: 'Buyer · Phoenix · Back on site',
+    reasoning:
+      'Viewed 650 Maple St four times since 7 AM. Score jumped 14 points overnight. Follow-up text drafted.',
+    primaryLabel: 'Send follow-up',
+    secondaryLabel: 'Why?',
+    source: 'Lofty Lead Analysis',
+    accent: true,
+    delayMs: 1800,
+  },
+  {
+    id: 'johnson',
+    icon: AlarmIcon,
+    kicker: 'Closing · 72 h',
+    title: 'Johnson deal · $485K',
+    meta: '650 Elm · Inspection contingency open',
+    reasoning:
+      'Inspection note still open. Two tasks overdue. I can reschedule and notify the client in one move.',
+    primaryLabel: 'Do all three',
+    secondaryLabel: 'Open deal',
+    source: 'Transaction checklists',
+    delayMs: 3400,
+  },
+  {
+    id: 'bloom',
+    icon: LightningIcon,
+    kicker: 'Auto-paused',
+    title: 'Bloom outreach · paused',
+    meta: '28-day Smart Plan · 2 leads affected',
+    reasoning:
+      'Two emails bounced — plan auto-paused. I can clean contacts and resume where it left off.',
+    primaryLabel: 'Fix and resume',
+    secondaryLabel: 'View plan',
+    source: 'Smart Plans',
+    delayMs: 5000,
+  },
+]
+
+type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
+
 export default function AfterScreen({ onViewLead, onOpenChat }: AfterScreenProps) {
-  const [phase, setPhase] = useState<'thinking' | 'typing' | 'done'>('thinking')
-  const [displayedText, setDisplayedText] = useState('')
-  const [toast, setToast] = useState<string | null>(null)
-  const [cardsVisible, setCardsVisible] = useState(false)
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [revealedChars, setRevealedChars] = useState(0)
+  const [approved, setApproved] = useState<Record<string, boolean>>({})
+  const [voiceOn, setVoiceOn] = useState(false)
+  const fallbackTimer = useRef<NodeJS.Timeout | null>(null)
+  const voice = useVoice()
 
-  useEffect(() => {
-    const thinkTimer = setTimeout(() => setPhase('typing'), 2000)
-    return () => clearTimeout(thinkTimer)
-  }, [])
-
-  useEffect(() => {
-    if (phase !== 'typing') return
-    let i = 0
-    const interval = setInterval(() => {
-      if (i < BRIEFING_TEXT.length) {
-        setDisplayedText(BRIEFING_TEXT.slice(0, i + 1))
-        i++
-      } else {
-        clearInterval(interval)
-        setPhase('done')
-        setTimeout(() => setCardsVisible(true), 200)
-      }
-    }, 22)
-    return () => clearInterval(interval)
+  const orbState: OrbState = useMemo(() => {
+    if (phase === 'thinking') return 'thinking'
+    if (phase === 'speaking') return 'speaking'
+    if (phase === 'executing') return 'executing'
+    if (phase === 'complete' || phase === 'done') return 'done'
+    return 'idle'
   }, [phase])
 
-  const showToast = useCallback((msg: string) => setToast(msg), [])
+  const approvedCount = Object.values(approved).filter(Boolean).length
+
+  const start = useCallback(() => {
+    setApproved({})
+    setRevealedChars(0)
+    setPhase('thinking')
+
+    setTimeout(() => {
+      setPhase('speaking')
+
+      if (voiceOn && voice.supported) {
+        voice.speak(BRIEFING, {
+          onBoundary: ({ charIndex }) => setRevealedChars(charIndex + 6),
+          onEnd: () => {
+            setRevealedChars(BRIEFING.length)
+            setPhase('done')
+          },
+        })
+      } else {
+        let i = 0
+        const id = setInterval(() => {
+          i += 3
+          setRevealedChars(Math.min(i, BRIEFING.length))
+          if (i >= BRIEFING.length) {
+            clearInterval(id)
+            setPhase('done')
+          }
+        }, 55)
+        fallbackTimer.current = id
+      }
+    }, 1100)
+  }, [voice, voiceOn])
+
+  useEffect(() => {
+    start()
+    return () => {
+      if (fallbackTimer.current) clearInterval(fallbackTimer.current)
+      voice.cancel()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleApprove = (id: string) => {
+    setApproved((a) => {
+      const next = { ...a, [id]: true }
+      const count = Object.values(next).filter(Boolean).length
+      if (count === 3) {
+        setTimeout(() => setPhase('executing'), 250)
+      }
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (phase === 'executing') {
+      const t = setTimeout(() => setPhase('complete'), 1800)
+      return () => clearTimeout(t)
+    }
+  }, [phase])
+
+  const handleApproveAll = () => {
+    setApproved({ scott: true, johnson: true, bloom: true })
+    setTimeout(() => setPhase('executing'), 300)
+  }
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
-    year: 'numeric',
+  })
+  const time = new Date().toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
   })
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gray-50">
-      <NavBar />
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          {/* Greeting */}
-          <div className="mb-6 animate-fade-in">
-            <h1 className="text-3xl font-bold text-gray-900">Good morning, Baylee ☀️</h1>
-            <p className="text-gray-500 mt-1 text-sm">{today}</p>
-            <p className="text-gray-600 mt-2 text-sm leading-relaxed">
-              I reviewed your leads, tasks, transactions, and notifications. Here&apos;s what matters today.
-            </p>
-          </div>
-
-          {/* AI Briefing Card */}
-          <div
-            className="rounded-2xl p-6 mb-6 shadow-lg relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #0891b2 100%)',
-            }}
+    <div className="canvas-dark canvas-grid flex flex-col h-full relative">
+      {/* Top bar — minimal, monochrome */}
+      <div className="relative z-10 flex items-center justify-between px-6 py-3.5 border-b border-white/[0.05]">
+        <div className="flex items-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-pill bg-cyan-300" />
+            <span className="text-[10px] font-semibold tracking-wider2 text-white/80">
+              LOFTY AI
+            </span>
+          </span>
+          <span className="text-white/15 text-xs">/</span>
+          <span className="text-[11px] text-white/40 font-medium">Morning briefing</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setVoiceOn((v) => !v)}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight transition-all
+                        ${voiceOn
+                          ? 'bg-white/[0.06] text-white/85 border border-white/[0.14]'
+                          : 'bg-transparent text-white/40 border border-white/[0.08] hover:bg-white/[0.04] hover:text-white/70'}`}
           >
-            {/* subtle pattern overlay */}
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage:
-                  'radial-gradient(circle at 20% 80%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-              }}
-            />
-
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-white text-xs">✦</span>
-                </div>
-                <span className="text-blue-100 text-xs font-semibold uppercase tracking-wider">
-                  {phase === 'thinking' ? 'AI Thinking...' : 'Lofty AI Briefing'}
-                </span>
-              </div>
-
-              {phase === 'thinking' ? (
-                <div className="space-y-2">
-                  {[100, 80, 60].map((w, i) => (
-                    <div
-                      key={i}
-                      className="h-4 bg-white/20 rounded-full thinking-bar"
-                      style={{ width: `${w}%`, animationDelay: `${i * 0.2}s` }}
-                    />
-                  ))}
-                  <p className="text-blue-200 text-sm mt-3 animate-pulse">
-                    Analyzing leads, tasks, transactions...
-                  </p>
-                </div>
-              ) : (
-                <p className="text-white text-lg leading-relaxed font-medium min-h-[5rem]">
-                  {displayedText}
-                  {phase === 'typing' && (
-                    <span className="inline-block w-0.5 h-5 bg-white ml-0.5 align-middle animate-[blink_1s_step-end_infinite]" />
-                  )}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Priority Action Cards */}
-          <div
-            className={`grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 transition-all duration-500 ${
-              cardsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}
+            {voiceOn ? <MicrophoneIcon size={12} weight="regular" /> : <MicrophoneSlashIcon size={12} weight="regular" />}
+            {voiceOn ? 'Voice on' : 'Voice off'}
+          </button>
+          <button
+            onClick={() => { voice.cancel(); start() }}
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[10.5px] font-semibold tracking-tight
+                       bg-transparent text-white/40 border border-white/[0.08] hover:bg-white/[0.04] hover:text-white/70 transition-all"
           >
-            {/* Card 1 — Hot Lead */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xl">🔥</span>
-                <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                  HIGH INTEREST
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Scott Hayes · Score 92</h3>
-              <p className="text-gray-500 text-xs mt-1 mb-4">Viewed 650 Maple St × 4 today</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => showToast('Draft text sent to Scott Hayes!')}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  Send Draft Text
-                </button>
-                <button
-                  onClick={onViewLead}
-                  className="flex-1 border border-gray-300 hover:border-blue-400 hover:text-blue-600 text-gray-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  View Lead →
-                </button>
-              </div>
-            </div>
-
-            {/* Card 2 — Urgent Transaction */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xl">⏰</span>
-                <span className="text-xs font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                  DEADLINE ALERT
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Johnson Closing · 72 hrs</h3>
-              <p className="text-gray-500 text-xs mt-1 mb-4">Inspection note still open</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => showToast('Opening Johnson transaction...')}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  Open Transaction
-                </button>
-                <button
-                  onClick={() => showToast('Inspection note marked resolved!')}
-                  className="flex-1 border border-gray-300 hover:border-red-400 hover:text-red-600 text-gray-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  Resolve Note
-                </button>
-              </div>
-            </div>
-
-            {/* Card 3 — Smart Plan */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xl">⚡</span>
-                <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                  NEEDS ATTENTION
-                </span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm">Lofty Bloom Plan · Paused</h3>
-              <p className="text-gray-500 text-xs mt-1 mb-4">Email bounce on 3 leads</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => showToast('Opening email bounce fixer...')}
-                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  Fix Now
-                </button>
-                <button
-                  onClick={() => showToast('Opening Lofty Bloom plan...')}
-                  className="flex-1 border border-gray-300 hover:border-amber-400 hover:text-amber-600 text-gray-700 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                >
-                  View Plan
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Chat input */}
-          <div
-            className={`transition-all duration-700 delay-300 ${
-              cardsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}
-          >
-            <div
-              className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm cursor-text hover:border-blue-400 transition-colors"
-              onClick={onOpenChat}
-            >
-              <span className="text-blue-500">✦</span>
-              <span className="text-gray-400 text-sm flex-1">Ask AI anything about your day...</span>
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors">
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-center text-xs text-gray-400 mt-3">
-              ✦ Powered by Lofty AI · Cross-references leads, tasks, transactions &amp; notifications
-            </p>
-          </div>
+            <ArrowCounterClockwiseIcon size={12} weight="regular" />
+            Replay
+          </button>
         </div>
       </div>
 
-      {/* GlobeHack badge */}
-      <div className="fixed bottom-4 right-4 bg-gray-900/90 backdrop-blur text-white text-xs px-3 py-1.5 rounded-full shadow-lg z-30">
-        Built for GlobeHack 2026 · ASU ACM
-      </div>
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto relative z-10">
+        <div className="max-w-5xl mx-auto px-6 pt-6 pb-20 flex flex-col items-center">
+          {/* Orb */}
+          <div className="relative -mb-10">
+            <Orb state={orbState} size={116} />
+          </div>
 
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+          {/* Greeting */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mt-0"
+          >
+            <h1 className="text-[30px] md:text-[34px] font-semibold text-white tracking-tightest leading-[1.02]">
+              Good morning, Baylee
+            </h1>
+            <p className="mt-1.5 text-[11.5px] text-white/35 font-medium tabular-nums tracking-tight">
+              {today} · {time}
+            </p>
+          </motion.div>
+
+          {/* Caption */}
+          <div className="mt-4 min-h-[84px] w-full">
+            <CaptionStrip
+              text={BRIEFING}
+              revealedChars={revealedChars}
+              speaking={phase === 'speaking'}
+            />
+          </div>
+
+          {/* Cards */}
+          <AnimatePresence>
+            {(phase === 'speaking' || phase === 'done' || phase === 'executing' || phase === 'complete') && (
+              <motion.div
+                key="cards"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full max-w-4xl mt-4 grid grid-cols-1 md:grid-cols-3 gap-3"
+              >
+                {CARDS.map((c) => (
+                  <ActionCard
+                    key={c.id}
+                    icon={c.icon}
+                    kicker={c.kicker}
+                    title={c.title}
+                    meta={c.meta}
+                    reasoning={c.reasoning}
+                    primaryLabel={c.primaryLabel}
+                    secondaryLabel={c.secondaryLabel}
+                    source={c.source}
+                    accent={!!c.accent}
+                    delayMs={c.delayMs}
+                    approved={!!approved[c.id]}
+                    executing={phase === 'executing' && !!approved[c.id]}
+                    onApprove={() => handleApprove(c.id)}
+                    onSecondary={c.id === 'scott' ? onViewLead : () => {}}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Controls / footer */}
+          <AnimatePresence mode="wait">
+            {phase === 'complete' ? (
+              <motion.div
+                key="complete"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-10 text-center"
+              >
+                <p className="text-white/85 text-[14px] font-medium tracking-tight">
+                  All three executing · I'll check back in an hour.
+                </p>
+                <p className="text-white/35 text-[11px] mt-1.5">Inbox zero for your morning.</p>
+              </motion.div>
+            ) : phase === 'done' ? (
+              <motion.div
+                key="controls"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-9 flex flex-col items-center gap-3"
+              >
+                <button
+                  onClick={handleApproveAll}
+                  className="inline-flex items-center gap-2 h-10 px-5 rounded-pill
+                             text-[#0B1220] text-[12.5px] font-semibold tracking-tight transition-all hover:brightness-110"
+                  style={{
+                    background: '#22D3EE',
+                    boxShadow:
+                      'inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 24px -8px rgba(34,211,238,0.55)',
+                  }}
+                >
+                  <SparkleIcon size={14} weight="regular" />
+                  Do all three
+                </button>
+                <div
+                  onClick={onOpenChat}
+                  className="flex items-center gap-2.5 w-[420px] h-10 px-4 rounded-pill cursor-text
+                             bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.16] transition-all"
+                >
+                  <SparkleIcon size={14} weight="regular" className="text-cyan-300/80" />
+                  <span className="flex-1 text-[12.5px] text-white/35">Ask Lofty AI anything…</span>
+                  <ArrowRightIcon size={14} weight="regular" className="text-white/25" />
+                </div>
+                <p className="text-[10.5px] text-white/25 mt-1">
+                  {approvedCount > 0 && approvedCount < 3
+                    ? `${approvedCount} approved · ${3 - approvedCount} pending`
+                    : 'Say "go" or tap approve'}
+                </p>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* Escape hatch */}
+          <div className="fixed bottom-4 right-6 z-20">
+            <button className="inline-flex items-center gap-1.5 text-[10.5px] text-white/25 hover:text-white/70
+                               transition-colors font-medium tracking-tight">
+              Explore the full Lofty dashboard
+              <ArrowRightIcon size={12} weight="regular" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
