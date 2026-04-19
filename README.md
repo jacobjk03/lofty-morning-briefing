@@ -1,54 +1,152 @@
-# Lofty Morning Briefing (GlobeHack demo)
+# Lofty Morning Briefing
 
-A **GlobeHack 2026 / ASU ACM** prototype that reimagines Lofty’s first experience: a **voice-forward morning briefing** and **Lofty AI** conversation, contrasted with a dense **CRM dashboard** view.
+> **GlobeHack 2026 · ASU ACM × Global Career Network**  
+> Reimagining Lofty CRM's first-login experience — from an overwhelming dashboard to a voice-forward AI morning briefing.
 
-This is a **standalone Next.js app** with **mock CRM data** (not connected to real Lofty APIs).
+---
+
+## What we built
+
+A live Next.js prototype that shows the **before / after** of Lofty's agent experience:
+
+| Tab | What it shows |
+|-----|--------------|
+| **Today** | The "before" — real Lofty-style dense dashboard (widgets, setup nag, friction callout) |
+| **Lofty AI** | The "after" — AI orb narrates your morning, surfaces 3 priority action cards, right-hand utility rail |
+| **My Dashboard** | Full CRM widget view, accessible from the Lofty AI greeting for agents who want it |
+| **Lead detail** | Scott Hayes profile: score ring meter, breakdown by signal, quick actions, AI draft SMS |
+| **Conversation** | Live chat powered by Groq (llama-3.3-70b) with full CRM context injected |
+| **Pitch** | Problem statement, before/after comparison table, success metrics — for judges |
+
+---
 
 ## Quick start
 
 ```bash
 npm install
 cp .env.local.example .env.local
-# Add your Groq API key for the Conversation tab
+# Fill in your Groq API key (see Environment section below)
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+If you get stale build errors after a dependency change, run:
+
+```bash
+rm -rf .next && npm run dev
+```
+
+---
+
 ## Environment
 
-| Variable         | Required | Purpose                                      |
-|-----------------|----------|----------------------------------------------|
-| `GROQ_API_KEY`  | Yes*     | Powers `/api/chat` (Llama via Groq) for **Conversation** |
+```bash
+# .env.local
+GROQ_API_KEY=your_groq_key_here
+```
 
-\*The rest of the UI works without it; the chat UI shows a helpful error if the key is missing.
+| Variable | Required | Used by |
+|----------|----------|---------|
+| `GROQ_API_KEY` | Yes* | `/api/chat` (Conversation tab) · `/api/briefing` (AI morning summary) · `/api/draft` (DraftModal personalized messages) |
+
+\* The UI loads and all tabs work without it. The Conversation tab and AI Draft feature show an inline error message if the key is missing or invalid.
+
+Get a free key at [console.groq.com](https://console.groq.com).
+
+---
 
 ## Scripts
 
-- `npm run dev` — development server  
-- `npm run build` — production build  
-- `npm start` — run production server after `build`
+```bash
+npm run dev      # development server (hot reload)
+npm run build    # production build
+npm start        # run production server (requires build first)
+```
 
-## What’s in the UI
+---
 
-- **Today** — “Before” state: busy dashboard with widgets and friction callout.  
-- **Lofty AI** — Morning briefing (orb, narration, action cards) plus a **right-hand utility rail** (hover for labels). Use **My Dashboard** next to the greeting or **Explore the full Lofty dashboard** at the bottom to open the full widget view.  
-- **My Dashboard** (from Lofty AI) — Same mock as **Today**, with a **Back to Morning Briefing** bar.  
-- **Lead detail** — Scott Hayes score breakdown and draft message (from briefing flow).  
-- **Conversation** — Chat with Lofty AI via Groq.  
-- **Pitch** — Problem / metrics slide for judges.
+## Data layer
+
+The app seeds a local **SQLite database** (`crm.db`) on first run via `lib/db.ts`. All CRM data — leads, transactions, tasks, listings, appointments — is read from this DB through the API routes. Hardcoded fallbacks exist in every component so the UI still works if the DB or an API call fails.
+
+`crm.db` is gitignored; it is re-created automatically on every fresh `npm run dev`.
+
+---
+
+## API routes
+
+| Route | Method | Returns |
+|-------|--------|---------|
+| `/api/briefing` | GET | AI-generated morning summary (Groq) |
+| `/api/leads` | GET | All leads with scores and activity |
+| `/api/leads/[id]` | GET | Single lead by ID |
+| `/api/transactions` | GET | Active transactions |
+| `/api/tasks` | GET | Today's tasks |
+| `/api/listings` | GET | Agent's listings |
+| `/api/appointments` | GET | Upcoming appointments/showings |
+| `/api/chat` | POST | Streaming chat with CRM context (Groq) |
+| `/api/draft` | POST | AI-personalized draft message for a lead (Groq) |
+
+---
 
 ## Stack
 
-- Next.js (App Router), React, TypeScript, Tailwind CSS  
-- Framer Motion, Phosphor icons  
-- Groq OpenAI-compatible API for chat
+| Layer | Tech |
+|-------|------|
+| Framework | Next.js 15 (App Router), React 18, TypeScript |
+| Styling | Tailwind CSS (custom `ink` color scale, `pill` radius) |
+| Animation | Framer Motion |
+| Icons | Phosphor Icons |
+| Database | better-sqlite3 (local SQLite, seeded on startup) |
+| AI | Groq API — `llama-3.3-70b-versatile` |
+
+---
 
 ## Project layout
 
-- `app/page.tsx` — Tab shell and screen routing  
-- `app/components/` — Screens and UI pieces (`AfterScreen`, `BeforeScreen`, `AIAssistant`, etc.)  
-- `app/api/chat/route.ts` — Chat API route  
+```
+app/
+  page.tsx                  # Tab shell, screen routing, DB data fetching
+  globals.css               # Base styles, canvas-dark class, animations
+  components/
+    AfterScreen.tsx         # Lofty AI morning briefing (orb + cards + rail)
+    BeforeScreen.tsx        # Dense CRM dashboard ("Today" / "My Dashboard")
+    LeadDetail.tsx          # Lead profile, score ring, quick actions, draft SMS
+    AIAssistant.tsx         # Conversation chat UI
+    PitchMode.tsx           # Judge-facing pitch slide
+    ActionCard.tsx          # Priority action card (used in AfterScreen)
+    CaptionStrip.tsx        # Typewriter caption for briefing narration
+    LoftyUtilityRail.tsx    # Right-side icon rail (AI, Dialer, Messages, etc.)
+    Orb.tsx                 # Animated SVG orb (thinking / speaking / done states)
+    DraftModal.tsx          # AI-personalized draft message modal
+    NavBar.tsx              # Top nav bar (Lofty-style, used in BeforeScreen)
+    Toast.tsx               # Ephemeral action confirmation toast
+  api/
+    briefing/route.ts       # AI morning summary
+    leads/route.ts          # Lead list
+    leads/[id]/route.ts     # Single lead
+    transactions/route.ts   # Transactions
+    tasks/route.ts          # Tasks
+    listings/route.ts       # Listings
+    appointments/route.ts   # Appointments
+    chat/route.ts           # Groq chat
+    draft/route.ts          # Groq draft
+  hooks/
+    useVoice.ts             # Web Speech API hook for voice narration
+lib/
+  db.ts                     # SQLite seed + connection
+  queries.ts                # All DB query functions
+  types.ts                  # Shared TypeScript types
+```
+
+---
+
+## Team
+
+Built at GlobeHack 2026 by the ASU ACM team.
+
+---
 
 ## License
 
