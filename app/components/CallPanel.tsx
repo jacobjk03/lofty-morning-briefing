@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react'
 import { ConversationProvider, useConversation } from '@elevenlabs/react'
 import LoftyMark from './LoftyMark'
+import { byoFetch } from '@/lib/byok-client'
 
 interface TranscriptLine {
   speaker: 'agent' | 'user'
@@ -152,15 +153,16 @@ function CallPanelInner({
     setLiveStatus('ringing')
     ;(async () => {
       try {
-        const res = await fetch('/api/lead-pointer', {
+        const res = await byoFetch('/api/lead-pointer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ leadId, mode }),
         })
         if (cancelled) return
         if (res.status === 429) {
+          // byoFetch already dispatched the global quota event — the modal is popping.
           const data = await res.json().catch(() => ({}))
-          setErrorMsg(data.message || 'Demo limit reached — add your own API keys to continue.')
+          setErrorMsg(data.message || 'Demo limit reached. Unlock with demo password or your own keys.')
           return
         }
         if (!res.ok) return
@@ -317,7 +319,7 @@ function CallPanelInner({
       leadId,
       transcript: transcriptRef.current.slice(-8),
     }
-    fetch('/api/live-pointers', {
+    byoFetch('/api/live-pointers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -351,7 +353,7 @@ function CallPanelInner({
     setPhase('summary')
     setSummaryLoading(true)
     try {
-      const res = await fetch('/api/call-summary', {
+      const res = await byoFetch('/api/call-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

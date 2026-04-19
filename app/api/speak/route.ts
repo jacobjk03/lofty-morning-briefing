@@ -1,12 +1,13 @@
 import { consumeQuota, quotaExceededResponse } from '@/lib/quota'
 
 export async function POST(req: Request) {
-  const q = await consumeQuota()
+  const q = await consumeQuota(req, 'elevenlabs')
   if (!q.ok) return quotaExceededResponse(q)
 
   const { text } = await req.json()
 
-  if (!process.env.ELEVENLABS_API_KEY) {
+  const elKey = q.keys.elevenlabs.key
+  if (!elKey) {
     return new Response('ELEVENLABS_API_KEY not set', { status: 500 })
   }
 
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
     method: 'POST',
     headers: {
-      'xi-api-key': process.env.ELEVENLABS_API_KEY,
+      'xi-api-key': elKey,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

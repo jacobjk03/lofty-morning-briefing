@@ -45,13 +45,14 @@ function fallbackReply(last: string) {
 }
 
 export async function POST(req: Request) {
-  const q = await consumeQuota()
+  const q = await consumeQuota(req, 'groq')
   if (!q.ok) return quotaExceededResponse(q)
 
   const { messages } = await req.json()
   const last = messages?.[messages.length - 1]?.content || ''
 
-  if (!process.env.GROQ_API_KEY) {
+  const groqKey = q.keys.groq.key
+  if (!groqKey) {
     return Response.json({ message: fallbackReply(last), source: 'fallback' })
   }
 
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${groqKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { byoFetch } from '@/lib/byok-client'
 import {
   SparkleIcon,
   PaperPlaneTiltIcon,
@@ -26,7 +27,7 @@ export default function DraftModal({ leadId, onClose, onSent }: DraftModalProps)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    fetch('/api/draft', {
+    byoFetch('/api/draft', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ leadId }),

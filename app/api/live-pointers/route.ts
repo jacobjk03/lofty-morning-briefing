@@ -1,4 +1,5 @@
 import { getLeadById } from '@/lib/queries'
+import { resolveKeys } from '@/lib/quota'
 
 interface TranscriptLine {
   speaker: 'agent' | 'user'
@@ -29,7 +30,8 @@ export async function POST(req: Request) {
   const lead = leadId ? await getLeadById(String(leadId)) : null
   const leadName = lead?.name || 'Lead'
 
-  if (!process.env.GROQ_API_KEY) {
+  const groqKey = resolveKeys(req).groq.key
+  if (!groqKey) {
     return Response.json({ talkingPoints: fallback(leadName) })
   }
 
@@ -75,7 +77,7 @@ Return JSON array of 3 strings now:`
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${groqKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

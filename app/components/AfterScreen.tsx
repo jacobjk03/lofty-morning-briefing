@@ -20,6 +20,7 @@ import CaptionStrip from './CaptionStrip'
 import DraftModal from './DraftModal'
 import DetailSheet, { type DetailView } from './DetailSheet'
 import { useElevenLabsVoice } from '../hooks/useElevenLabsVoice'
+import { byoFetch } from '@/lib/byok-client'
 
 interface AfterScreenProps {
   onViewLead: () => void
@@ -149,7 +150,7 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, o
         setReplying(true)
         setVoiceReply(null)
         try {
-          const res = await fetch('/api/chat', {
+          const res = await byoFetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messages: [{ role: 'user', content: transcript }] }),

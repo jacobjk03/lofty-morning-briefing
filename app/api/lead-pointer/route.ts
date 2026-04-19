@@ -21,7 +21,7 @@ function fallbackPointer(lead: LeadRow) {
 type Mode = 'live' | 'ai-agent'
 
 export async function POST(req: Request) {
-  const q = await consumeQuota()
+  const q = await consumeQuota(req, 'groq')
   if (!q.ok) return quotaExceededResponse(q)
 
   let leadId: string | number | undefined
@@ -37,8 +37,9 @@ export async function POST(req: Request) {
   const lead = (await getLeadById(String(leadId ?? ''))) as LeadRow | null
   if (!lead) return Response.json({ error: 'Lead not found' }, { status: 404 })
 
+  const groqKey = q.keys.groq.key
   let pointer = ''
-  if (process.env.GROQ_API_KEY) {
+  if (groqKey) {
     const promptPerspective = mode === 'ai-agent'
       ? `You are Lofty Copilot, showing Baylee exactly what her AI agent is about to say when it opens this call on her behalf. In ONE short sentence (max 22 words), summarize the opening move.`
       : `You are Lofty Copilot, briefing agent Baylee before she opens a live call. In ONE short sentence (max 22 words), tell Baylee what to reference and what to ask first.`
@@ -59,7 +60,7 @@ Return ONLY the sentence.`
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          Authorization: `Bearer ${groqKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -162,7 +163,7 @@ HOW TO BEHAVE
       prospect_name: lead.name,
     },
     mode,
-    source: process.env.GROQ_API_KEY ? 'live' : 'fallback',
+    source: groqKey ? 'live' : 'fallback',
   })
 }
 

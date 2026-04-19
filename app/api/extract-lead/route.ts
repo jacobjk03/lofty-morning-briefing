@@ -19,7 +19,7 @@ function heuristicExtract(text: string) {
 }
 
 export async function POST(req: Request) {
-  const q = await consumeQuota()
+  const q = await consumeQuota(req, 'groq')
   if (!q.ok) return quotaExceededResponse(q)
 
   const { text } = await req.json()
@@ -27,7 +27,8 @@ export async function POST(req: Request) {
     return Response.json({ lead: {} })
   }
 
-  if (!process.env.GROQ_API_KEY) {
+  const groqKey = q.keys.groq.key
+  if (!groqKey) {
     return Response.json({ lead: heuristicExtract(text), source: 'fallback' })
   }
 
@@ -45,7 +46,7 @@ Notes should be a 1-2 sentence summary of the buyer/seller's motivation, family 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${groqKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

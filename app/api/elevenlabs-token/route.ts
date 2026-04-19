@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
+import { resolveKeys } from '@/lib/quota'
 
-export async function GET() {
+export async function GET(req: Request) {
   const agentId = process.env.ELEVENLABS_AGENT_ID
-  const apiKey = process.env.ELEVENLABS_API_KEY
+  const apiKey = resolveKeys(req).elevenlabs.key
 
   if (!agentId || !apiKey) {
     return NextResponse.json({ error: 'ElevenLabs not configured' }, { status: 500 })

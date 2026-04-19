@@ -15,6 +15,7 @@ import {
   FileTextIcon,
 } from '@phosphor-icons/react'
 import LoftyMark from './LoftyMark'
+import { byoFetch } from '@/lib/byok-client'
 
 interface AddLeadModalProps {
   onClose: () => void
@@ -51,15 +52,14 @@ export default function AddLeadModal({ onClose, onSaved }: AddLeadModalProps) {
     setPhase('thinking')
 
     try {
-      const res = await fetch('/api/extract-lead', {
+      const res = await byoFetch('/api/extract-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
       if (res.status === 429) {
-        const data = await res.json().catch(() => ({}))
+        // byoFetch already dispatched the quota event — modal is popping.
         setPhase('paste')
-        alert(data.message || 'Demo limit reached — add your own Groq key in .env.local to continue.')
         return
       }
       const data = await res.json()

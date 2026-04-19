@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { BYOK_SAVED_EVENT, getCredsStatus, openByokModal } from '@/lib/byok-client'
 
 const BeforeScreen = dynamic(() => import('./components/BeforeScreen'), { ssr: false })
 const AfterScreen = dynamic(() => import('./components/AfterScreen'), { ssr: false })
@@ -13,6 +14,7 @@ const SmartPlanModal = dynamic(() => import('./components/SmartPlanModal'), { ss
 const Toast = dynamic(() => import('./components/Toast'), { ssr: false })
 const TransitionIntro = dynamic(() => import('./components/TransitionIntro'), { ssr: false })
 const NavigatingOverlay = dynamic(() => import('./components/NavigatingOverlay'), { ssr: false })
+const ByokModal = dynamic(() => import('./components/ByokModal'), { ssr: false })
 
 type Screen = 'before' | 'after' | 'lead' | 'agents' | 'chat' | 'dashboard'
 
@@ -45,11 +47,16 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null)
   const [introOpen, setIntroOpen] = useState(false)
   const [navPayload, setNavPayload] = useState<{ target: Screen; label: string; rationale?: string } | null>(null)
+  const [credsStatus, setCredsStatus] = useState<'admin' | 'byok' | 'none'>('none')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const seen = window.localStorage.getItem('lofty_intro_seen')
     if (!seen) setIntroOpen(true)
+    setCredsStatus(getCredsStatus())
+    const onSaved = () => setCredsStatus(getCredsStatus())
+    window.addEventListener(BYOK_SAVED_EVENT, onSaved)
+    return () => window.removeEventListener(BYOK_SAVED_EVENT, onSaved)
   }, [])
 
   const dismissIntro = () => {
@@ -187,6 +194,35 @@ export default function Home() {
                 title="Replay the intro story"
               >
                 Replay intro
+              </button>
+
+              {/* Unlock — judges & teammates enter the demo password here
+                  before burning a call; visitors see it as a hint that BYOK
+                  is available. */}
+              <button
+                onClick={() => openByokModal('admin')}
+                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-pill text-[11.5px] font-semibold tracking-tight transition-all"
+                title={
+                  credsStatus === 'admin'
+                    ? 'Demo password saved — click to change'
+                    : credsStatus === 'byok'
+                      ? 'Your own API keys saved — click to change'
+                      : 'Paste a demo password to skip the 1-call limit'
+                }
+                style={
+                  credsStatus === 'none'
+                    ? { background: 'transparent', color: 'rgb(71,85,105)', border: '1px solid rgba(15,23,42,0.10)' }
+                    : {
+                        background: 'rgba(37,99,235,0.08)',
+                        color: '#1D4ED8',
+                        border: '1px solid rgba(37,99,235,0.18)',
+                      }
+                }
+              >
+                <span style={{ fontSize: 12, lineHeight: 1 }}>
+                  {credsStatus === 'none' ? '🔒' : '🔓'}
+                </span>
+                {credsStatus === 'none' ? 'Unlock' : 'Unlocked'}
               </button>
               <button
                 onClick={() => setAddLeadOpen(true)}
@@ -328,6 +364,9 @@ export default function Home() {
           onDone={finishNavigation}
         />
       )}
+
+      {/* Global BYOK / admin-password modal — opens on any 429. */}
+      <ByokModal />
     </div>
   )
 }

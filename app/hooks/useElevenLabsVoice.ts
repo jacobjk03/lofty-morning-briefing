@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { byoFetch } from '@/lib/byok-client'
 
 export type SpeechEvent = { charIndex: number }
 
@@ -40,7 +41,7 @@ export function useElevenLabsVoice(): UseVoiceReturn {
     cancel()
 
     try {
-      const res = await fetch('/api/speak', {
+      const res = await byoFetch('/api/speak', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),

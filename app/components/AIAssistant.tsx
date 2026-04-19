@@ -12,6 +12,7 @@ import {
 } from '@phosphor-icons/react'
 import LoftyMark from './LoftyMark'
 import { useElevenLabsVoice } from '../hooks/useElevenLabsVoice'
+import { byoFetch } from '@/lib/byok-client'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -155,14 +156,14 @@ export default function AIAssistant({ onNavigate, onOpenAddLead, onOpenSmartPlan
 
     setLoading(true)
     try {
-      const res = await fetch('/api/chat', {
+      const res = await byoFetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages }),
       })
       const data = await res.json()
       const reply: string = res.status === 429
-        ? (data.message || 'Demo limit reached — add your own Groq key in .env.local to keep chatting.')
+        ? (data.message || 'Demo limit reached — enter the demo password or your own keys to keep chatting.')
         : data.message
       setMessages([...newMessages, { role: 'assistant', content: reply }])
       if (voiceOnRef.current) {

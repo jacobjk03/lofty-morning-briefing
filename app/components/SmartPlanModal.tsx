@@ -16,6 +16,7 @@ import {
   PlusIcon,
 } from '@phosphor-icons/react'
 import LoftyMark from './LoftyMark'
+import { byoFetch } from '@/lib/byok-client'
 
 interface SmartPlanModalProps {
   onClose: () => void
@@ -68,15 +69,14 @@ export default function SmartPlanModal({ onClose, onLaunched }: SmartPlanModalPr
     setPrompt(g)
     setPhase('thinking')
     try {
-      const res = await fetch('/api/smart-plan', {
+      const res = await byoFetch('/api/smart-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal: g }),
       })
       if (res.status === 429) {
-        const data = await res.json().catch(() => ({}))
+        // byoFetch already dispatched the quota event — modal is popping.
         setPhase('prompt')
-        alert(data.message || 'Demo limit reached — add your own Groq key in .env.local to continue.')
         return
       }
       const data = await res.json()

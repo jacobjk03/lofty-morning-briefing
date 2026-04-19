@@ -1,3 +1,5 @@
+import { resolveKeys } from '@/lib/quota'
+
 interface TranscriptLine {
   speaker: 'agent' | 'user'
   text: string
@@ -24,7 +26,8 @@ export async function POST(req: Request) {
     return Response.json(fallback())
   }
 
-  if (transcript.length === 0 || !process.env.GROQ_API_KEY) {
+  const groqKey = resolveKeys(req).groq.key
+  if (transcript.length === 0 || !groqKey) {
     return Response.json(fallback())
   }
 
@@ -52,7 +55,7 @@ Return the JSON now:`
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        Authorization: `Bearer ${groqKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
