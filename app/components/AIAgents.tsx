@@ -69,7 +69,7 @@ const AGENT_DETAIL: Record<string, { title: string; icon: string; accentColor: s
         ],
       },
       {
-        heading: 'AI-Generated Captions', layout: 'list',
+        heading: 'Captions from Lofty Copilot', layout: 'list',
         items: [
           { label: '650 Maple St', value: '"Desert living redefined — 4bd pool home"' },
           { label: 'Market report teaser', value: '"Scottsdale values up 8% YoY — full report inside"' },

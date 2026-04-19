@@ -7,6 +7,10 @@ const AfterScreen = dynamic(() => import('./components/AfterScreen'), { ssr: fal
 const LeadDetail = dynamic(() => import('./components/LeadDetail'), { ssr: false })
 const AIAssistant = dynamic(() => import('./components/AIAssistant'), { ssr: false })
 const AIAgents = dynamic(() => import('./components/AIAgents'), { ssr: false })
+const AddLeadModal = dynamic(() => import('./components/AddLeadModal'), { ssr: false })
+const SmartPlanModal = dynamic(() => import('./components/SmartPlanModal'), { ssr: false })
+const Toast = dynamic(() => import('./components/Toast'), { ssr: false })
+const TransitionIntro = dynamic(() => import('./components/TransitionIntro'), { ssr: false })
 
 type Screen = 'before' | 'after' | 'lead' | 'agents' | 'chat' | 'dashboard'
 
@@ -21,6 +25,21 @@ const TABS: { id: Screen; label: string }[] = [
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('after')
   const [chatPrefill, setChatPrefill] = useState<{ text: string; nonce: number } | null>(null)
+  const [addLeadOpen, setAddLeadOpen] = useState(false)
+  const [smartPlanOpen, setSmartPlanOpen] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const [introOpen, setIntroOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const seen = window.localStorage.getItem('lofty_intro_seen')
+    if (!seen) setIntroOpen(true)
+  }, [])
+
+  const dismissIntro = () => {
+    setIntroOpen(false)
+    try { window.localStorage.setItem('lofty_intro_seen', '1') } catch {}
+  }
 
   // DB state
   const [briefing, setBriefing] = useState<any>(null)
@@ -157,8 +176,18 @@ export default function Home() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setAddLeadOpen(true)}
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-pill text-[11px] font-semibold tracking-tight text-white transition-all active:scale-[0.97]"
+            style={{
+              background: 'linear-gradient(180deg, #2563EB, #1D4ED8)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 4px 12px -4px rgba(37,99,235,0.45)',
+            }}
+          >
+            + Add lead
+          </button>
           <span className="hidden md:inline text-[10px] text-ink-300 font-medium tracking-tight">
-            GlobeHack '26 · ASU ACM
+            GlobeHack '26
           </span>
         </div>
       </div>
@@ -173,6 +202,9 @@ export default function Home() {
             onViewLead={() => goTo('lead')}
             onOpenChat={(text) => openChatWith(text)}
             onOpenDashboard={() => goTo('dashboard')}
+            onOpenAddLead={() => setAddLeadOpen(true)}
+            onOpenSmartPlan={() => setSmartPlanOpen(true)}
+            onOpenAgents={() => goTo('agents')}
             briefingData={briefing}
             leads={leads}
             visible={screen === 'after'}
@@ -207,10 +239,30 @@ export default function Home() {
 <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'chat' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <AIAssistant
             onNavigate={(target) => goTo(target as Screen)}
+            onOpenAddLead={() => setAddLeadOpen(true)}
+            onOpenSmartPlan={() => setSmartPlanOpen(true)}
             initialInput={chatPrefill}
           />
         </div>
       </div>
+
+      {/* Global modals */}
+      {addLeadOpen && (
+        <AddLeadModal
+          onClose={() => setAddLeadOpen(false)}
+          onSaved={(name) => setToast(`${name} added to CRM`)}
+        />
+      )}
+      {smartPlanOpen && (
+        <SmartPlanModal
+          onClose={() => setSmartPlanOpen(false)}
+          onLaunched={(name) => setToast(`${name} launched`)}
+        />
+      )}
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      {/* First-visit transition intro */}
+      {introOpen && <TransitionIntro onDone={dismissIntro} />}
     </div>
   )
 }

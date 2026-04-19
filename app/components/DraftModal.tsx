@@ -10,6 +10,7 @@ import {
   ArrowCounterClockwiseIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react'
+import LoftyMark from './LoftyMark'
 
 interface DraftModalProps {
   leadId: number
@@ -90,13 +91,8 @@ export default function DraftModal({ leadId, onClose, onSent }: DraftModalProps)
 
         {phase === 'loading' ? (
           <div className="px-10 py-14 flex flex-col items-center text-center">
-            <div className="relative w-14 h-14 rounded-pill flex items-center justify-center mb-5"
-                 style={{
-                   background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 60%, #1E293B 100%)',
-                   boxShadow: '0 0 0 4px rgba(37,99,235,0.08), 0 12px 40px -8px rgba(37,99,235,0.35)',
-                 }}>
-              <SparkleIcon size={18} weight="fill" className="text-white" />
-              <span className="absolute inset-0 rounded-pill border border-blue-200/70 animate-ping" />
+            <div className="mb-5">
+              <LoftyMark size={48} halo pulse />
             </div>
             <h2 className="font-headline font-bold text-[22px] tracking-tightest text-ink-900 italic">
               Drafting for {firstName}…

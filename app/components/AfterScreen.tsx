@@ -10,6 +10,9 @@ import {
   SparkleIcon,
   ArrowRightIcon,
   ArrowCounterClockwiseIcon,
+  UserPlusIcon,
+  UsersIcon,
+  ChatCircleIcon,
 } from '@phosphor-icons/react'
 import Orb, { OrbState } from './Orb'
 import ActionCard from './ActionCard'
@@ -22,6 +25,9 @@ interface AfterScreenProps {
   onViewLead: () => void
   onOpenChat: (prefill?: string) => void
   onOpenDashboard: () => void
+  onOpenAddLead?: () => void
+  onOpenSmartPlan?: () => void
+  onOpenAgents?: () => void
   briefingData?: any
   leads?: any[]
   visible?: boolean
@@ -88,7 +94,7 @@ const SUCCESS_TOAST: Record<string, string> = {
 
 type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
 
-export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, briefingData, leads, visible = true }: AfterScreenProps) {
+export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, onOpenAddLead, onOpenSmartPlan, onOpenAgents, briefingData, leads, visible = true }: AfterScreenProps) {
   const BRIEFING = briefingData?.briefingText || BRIEFING_DEFAULT
 
   const cards = CARDS.map((card, i) => {
@@ -414,7 +420,41 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard, b
                 <p className="text-ink-800 text-[14px] font-medium tracking-tight">
                   All three executing · I'll check back in an hour.
                 </p>
-                <p className="text-ink-400 text-[11px] mt-1.5">Inbox zero for your morning.</p>
+                <p className="text-ink-400 text-[11px] mt-1.5 mb-6">Inbox zero for your morning.</p>
+
+                <div className="mt-2 inline-flex items-center gap-1.5 text-[9.5px] font-semibold tracking-wider2 uppercase text-ink-400 mb-3">
+                  What's next?
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => onOpenAddLead?.()}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-pill bg-white border border-ink-200 text-ink-700 text-[12px] font-semibold hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm"
+                  >
+                    <UserPlusIcon size={13} weight="regular" />
+                    Add a new lead
+                  </button>
+                  <button
+                    onClick={() => onOpenSmartPlan?.()}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-pill bg-white border border-ink-200 text-ink-700 text-[12px] font-semibold hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm"
+                  >
+                    <LightningIcon size={13} weight="regular" />
+                    Build a Smart Plan
+                  </button>
+                  <button
+                    onClick={() => onOpenAgents?.()}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-pill bg-white border border-ink-200 text-ink-700 text-[12px] font-semibold hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm"
+                  >
+                    <UsersIcon size={13} weight="regular" />
+                    See AI Agents
+                  </button>
+                  <button
+                    onClick={() => onOpenChat()}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-pill bg-white border border-ink-200 text-ink-700 text-[12px] font-semibold hover:border-blue-400 hover:text-blue-700 transition-all shadow-sm"
+                  >
+                    <ChatCircleIcon size={13} weight="regular" />
+                    Ask anything else
+                  </button>
+                </div>
               </motion.div>
             ) : phase === 'done' ? (
               <motion.div

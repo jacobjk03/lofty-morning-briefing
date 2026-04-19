@@ -16,6 +16,7 @@ import {
   ArrowUpRightIcon,
   CheckCircleIcon,
 } from '@phosphor-icons/react'
+import LoftyMark from './LoftyMark'
 import Toast from './Toast'
 import CallOverlay from './CallOverlay'
 import { useVoice } from '../hooks/useVoice'
@@ -381,17 +382,9 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
                 }}
               >
                 <div className="flex items-center gap-2.5 mb-5">
-                  <div
-                    className="w-7 h-7 rounded-pill flex items-center justify-center"
-                    style={{
-                      background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)',
-                      boxShadow: '0 6px 18px -6px rgba(37,99,235,0.45)',
-                    }}
-                  >
-                    <SparkleIcon size={12} weight="fill" className="text-white" />
-                  </div>
+                  <LoftyMark size={22} halo />
                   <h2 className="font-headline font-bold italic text-[18px] tracking-tightest text-ink-900">
-                    AI draft message
+                    Drafted by Lofty Copilot
                   </h2>
                 </div>
 
@@ -478,8 +471,8 @@ export default function LeadDetail({ onBack }: LeadDetailProps) {
 
                 {/* Footnote */}
                 <div className="mt-6 pt-5 border-t border-ink-100 flex items-center justify-between text-[11px]">
-                  <span className="text-ink-400">Recommended via</span>
-                  <span className="text-blue-600 font-semibold">Lofty Lead Analysis</span>
+                  <span className="text-ink-400">Picked for you by</span>
+                  <span className="text-blue-600 font-semibold">Lofty Copilot</span>
                 </div>
               </div>
             </motion.div>

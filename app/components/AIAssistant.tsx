@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  SparkleIcon,
   ArrowUpIcon,
   NotePencilIcon,
   CalendarPlusIcon,
@@ -10,6 +9,7 @@ import {
   MicrophoneIcon,
   MicrophoneSlashIcon,
 } from '@phosphor-icons/react'
+import LoftyMark from './LoftyMark'
 import { useElevenLabsVoice } from '../hooks/useElevenLabsVoice'
 
 interface Message {
@@ -30,7 +30,29 @@ const FOLLOWUP_CHIPS = [
   { label: 'See full activity', Icon: ClockCounterClockwiseIcon },
 ]
 
-type NavTarget = 'after' | 'lead' | 'pitch' | 'chat' | 'dashboard' | 'before'
+interface Source {
+  kind: 'lead' | 'transaction' | 'plan' | 'listing'
+  label: string
+  detail: string
+  match: RegExp
+}
+
+/** Known CRM entities Aria can reference in replies. */
+const KNOWN_SOURCES: Source[] = [
+  { kind: 'lead',        label: 'Scott Hayes',           detail: 'Buyer · Score 92 · Viewed 650 Maple 4×',         match: /\bscott|hayes\b/i },
+  { kind: 'lead',        label: 'Maria Gonzalez',        detail: 'Buyer · Score 78 · Requested info on 1842 Camelback', match: /\bmaria|gonzalez\b/i },
+  { kind: 'lead',        label: 'David Kim',             detail: 'Seller · Score 61 · Asked about comps',          match: /\bdavid kim\b/i },
+  { kind: 'transaction', label: 'Johnson deal · $485K',  detail: '650 Elm · Closing in 72 hrs · Inspection open',  match: /\bjohnson\b/i },
+  { kind: 'plan',        label: 'Bloom Companion',       detail: '28-day Smart Plan · Paused after 2 bounces',     match: /\bbloom\b/i },
+  { kind: 'listing',     label: '650 Maple St',          detail: '4bd · $725K · 12 days on market · 94% match',    match: /\b650 maple\b/i },
+  { kind: 'listing',     label: '1842 Camelback',        detail: 'Scottsdale · active showings this week',         match: /\bcamelback|1842\b/i },
+]
+
+function extractSources(content: string): Source[] {
+  return KNOWN_SOURCES.filter((s) => s.match.test(content))
+}
+
+type NavTarget = 'after' | 'lead' | 'agents' | 'chat' | 'dashboard' | 'before'
 
 interface Intent {
   target: NavTarget
@@ -45,8 +67,8 @@ function detectIntent(text: string): Intent | null {
     return { target: 'after', label: 'the morning briefing' }
   if (/\b(dashboard|crm|everything|full view|all widgets|old lofty)\b/.test(t))
     return { target: 'dashboard', label: 'the full dashboard' }
-  if (/\b(pitch|deck|demo slide)\b/.test(t))
-    return { target: 'pitch', label: 'the pitch' }
+  if (/\b(ai agents?|show agents|social agent|sales agent|homeowner agent|workers|automat)\b/.test(t))
+    return { target: 'agents', label: 'your AI Agents' }
   return null
 }
 
@@ -79,10 +101,12 @@ function splitReply(content: string): { lead: string; callout?: string; tail?: s
 
 interface AIAssistantProps {
   onNavigate?: (target: NavTarget) => void
+  onOpenAddLead?: () => void
+  onOpenSmartPlan?: () => void
   initialInput?: { text: string; nonce: number } | null
 }
 
-export default function AIAssistant({ onNavigate, initialInput }: AIAssistantProps = {}) {
+export default function AIAssistant({ onNavigate, onOpenAddLead, onOpenSmartPlan, initialInput }: AIAssistantProps = {}) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -100,6 +124,18 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
     const newMessages: Message[] = [...messages, { role: 'user', content: trimmed }]
     setMessages(newMessages)
     setInput('')
+
+    const lower = trimmed.toLowerCase()
+    if (onOpenAddLead && /\b(add|new|create|import)\b.*\b(lead|contact)\b|\blead\b.*\b(from|paste|note|email|referral)\b/.test(lower)) {
+      setMessages([...newMessages, { role: 'assistant', content: 'Opening the Add Lead flow — paste anything and I\'ll extract the fields.' }])
+      setTimeout(() => onOpenAddLead(), 700)
+      return
+    }
+    if (onOpenSmartPlan && /\b(build|draft|create|new|start)\b.*\b(smart ?plan|plan|nurture|cadence|sequence|drip|campaign)\b/.test(lower)) {
+      setMessages([...newMessages, { role: 'assistant', content: 'Opening the Smart Plan builder — describe the audience and I\'ll draft the cadence.' }])
+      setTimeout(() => onOpenSmartPlan(), 700)
+      return
+    }
 
     const intent = onNavigate ? detectIntent(trimmed) : null
     if (intent) {
@@ -230,18 +266,11 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="text-center flex flex-col items-center"
             >
-              <div
-                className="relative w-16 h-16 rounded-pill flex items-center justify-center mb-6"
-                style={{
-                  background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 60%, #0B1220 100%)',
-                  boxShadow: '0 0 0 8px rgba(37,99,235,0.05), 0 14px 40px -10px rgba(37,99,235,0.35)',
-                }}
-              >
-                <SparkleIcon size={22} weight="fill" className="text-white" />
-                <span className="absolute inset-0 rounded-pill border border-blue-200/50 animate-ping" />
+              <div className="mb-6">
+                <LoftyMark size={56} halo pulse />
               </div>
               <div className="text-[10px] font-semibold tracking-wider2 uppercase text-blue-600/70 mb-3">
-                Lofty AI · Ready
+                Lofty Copilot · Ready
               </div>
               <h1 className="font-headline font-bold italic text-[38px] md:text-[46px] tracking-tightest text-ink-900 leading-[1.05]">
                 How can I help, Baylee?
@@ -293,13 +322,16 @@ export default function AIAssistant({ onNavigate, initialInput }: AIAssistantPro
                       className="flex flex-col items-start"
                     >
                       <div className="flex items-center gap-2 mb-5">
-                        <SparkleIcon size={14} weight="fill" className="text-blue-600" />
+                        <LoftyMark size={14} />
                         <span className="text-[10px] font-bold tracking-wider2 uppercase text-blue-600">
-                          Lofty AI · Recommendation
+                          Lofty Copilot · Recommendation
                         </span>
                       </div>
 
                       <AssistantBody content={msg.content} />
+
+                      {/* Grounding disclosure — what Aria read to compose this */}
+                      <SourcesPanel sources={extractSources(msg.content)} onNavigate={onNavigate} />
 
                       {/* Action buttons below the last assistant message only */}
                       {i === messages.length - 1 && (
@@ -452,4 +484,96 @@ function AssistantBody({ content }: { content: string }) {
       )}
     </div>
   )
+}
+
+function SourcesPanel({
+  sources,
+  onNavigate,
+}: {
+  sources: Source[]
+  onNavigate?: (target: NavTarget) => void
+}) {
+  const [open, setOpen] = useState(false)
+  if (sources.length === 0) return null
+
+  const routeFor = (s: Source): NavTarget | null => {
+    if (s.kind === 'lead') return 'lead'
+    return null
+  }
+
+  return (
+    <div className="mt-6 w-full">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 text-[10.5px] font-semibold tracking-wider2 uppercase text-ink-400 hover:text-blue-600 transition-colors"
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <LoftyMark size={11} />
+          Grounded on {sources.length} thing{sources.length > 1 ? 's' : ''} from your CRM
+        </span>
+        <span
+          className="inline-block transition-transform"
+          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
+        >
+          <ArrowRightIcon size={10} weight="bold" />
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3 space-y-1.5">
+              {sources.map((s) => {
+                const route = routeFor(s)
+                const body = (
+                  <>
+                    <span className="shrink-0 inline-flex items-center px-1.5 h-4 rounded-sm text-[9px] font-bold tracking-wider2 uppercase"
+                          style={{ background: kindBg(s.kind), color: kindFg(s.kind) }}>
+                      {kindLabel(s.kind)}
+                    </span>
+                    <span className="text-[12.5px] font-semibold text-ink-800">{s.label}</span>
+                    <span className="text-ink-300">·</span>
+                    <span className="text-[11.5px] text-ink-500 truncate">{s.detail}</span>
+                  </>
+                )
+                return route && onNavigate ? (
+                  <button
+                    key={s.label}
+                    onClick={() => onNavigate(route)}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-ink-200 hover:border-blue-400 hover:bg-blue-50/40 transition-all text-left"
+                  >
+                    {body}
+                    <ArrowRightIcon size={11} weight="bold" className="ml-auto text-ink-300" />
+                  </button>
+                ) : (
+                  <div
+                    key={s.label}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-ink-200"
+                  >
+                    {body}
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function kindLabel(k: Source['kind']) {
+  return k === 'lead' ? 'Lead' : k === 'transaction' ? 'Deal' : k === 'plan' ? 'Plan' : 'Listing'
+}
+function kindBg(k: Source['kind']) {
+  return k === 'lead' ? 'rgba(239,68,68,0.08)' : k === 'transaction' ? 'rgba(245,158,11,0.08)' : k === 'plan' ? 'rgba(37,99,235,0.08)' : 'rgba(22,163,74,0.08)'
+}
+function kindFg(k: Source['kind']) {
+  return k === 'lead' ? '#b91c1c' : k === 'transaction' ? '#b45309' : k === 'plan' ? '#1d4ed8' : '#15803d'
 }
