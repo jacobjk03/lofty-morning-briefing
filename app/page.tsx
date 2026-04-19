@@ -5,11 +5,10 @@ import dynamic from 'next/dynamic'
 const BeforeScreen = dynamic(() => import('./components/BeforeScreen'), { ssr: false })
 const AfterScreen = dynamic(() => import('./components/AfterScreen'), { ssr: false })
 const LeadDetail = dynamic(() => import('./components/LeadDetail'), { ssr: false })
-const PitchMode = dynamic(() => import('./components/PitchMode'), { ssr: false })
 const AIAssistant = dynamic(() => import('./components/AIAssistant'), { ssr: false })
 const AIAgents = dynamic(() => import('./components/AIAgents'), { ssr: false })
 
-type Screen = 'before' | 'after' | 'lead' | 'agents' | 'pitch' | 'chat' | 'dashboard'
+type Screen = 'before' | 'after' | 'lead' | 'agents' | 'chat' | 'dashboard'
 
 const TABS: { id: Screen; label: string }[] = [
   { id: 'before', label: 'Today' },
@@ -17,7 +16,6 @@ const TABS: { id: Screen; label: string }[] = [
   { id: 'lead', label: 'Lead detail' },
   { id: 'agents', label: 'AI Agents' },
   { id: 'chat', label: 'Conversation' },
-  { id: 'pitch', label: 'Pitch' },
 ]
 
 export default function Home() {
@@ -203,10 +201,7 @@ export default function Home() {
         <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'agents' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <AIAgents onGoToBriefing={() => goTo('after')} onGoToChat={() => openChatWith()} />
         </div>
-        <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'pitch' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
-          <PitchMode />
-        </div>
-        <div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'chat' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
+<div className={`absolute inset-0 transition-opacity duration-300 ${screen === 'chat' ? 'opacity-100 pointer-events-auto z-10' : 'opacity-0 pointer-events-none z-0'}`}>
           <AIAssistant
             onNavigate={(target) => goTo(target as Screen)}
             initialInput={chatPrefill}
