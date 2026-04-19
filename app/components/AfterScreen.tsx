@@ -21,11 +21,11 @@ import { useVoice } from '../hooks/useVoice'
 interface AfterScreenProps {
   onViewLead: () => void
   onOpenChat: () => void
-  /** Full CRM-style dashboard (same widgets as Today / Before tab) */
-  onOpenDashboard: () => void
+  briefingData?: any
+  leads?: any[]
 }
 
-const BRIEFING =
+const BRIEFING_DEFAULT =
   "Good morning Baylee. I've reviewed your leads, your transactions, your Smart Plans, and your inbox. Three things matter today. Scott Hayes viewed six-fifty Maple four times this morning — I drafted his follow-up. Your Johnson closing is seventy-two hours out with an open inspection note. And your Bloom outreach paused because two leads bounced. Three moves. Say go, or approve the ones you want."
 
 const CARDS = [
@@ -73,7 +73,14 @@ const CARDS = [
 
 type Phase = 'idle' | 'thinking' | 'speaking' | 'done' | 'executing' | 'complete'
 
-export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard }: AfterScreenProps) {
+export default function AfterScreen({ onViewLead, onOpenChat, briefingData, leads }: AfterScreenProps) {
+  const BRIEFING = briefingData?.briefingText || BRIEFING_DEFAULT
+
+  const cards = CARDS.map((card, i) => {
+    const p = briefingData?.priorities?.[i]
+    if (!p) return card
+    return { ...card, kicker: p.badge || card.kicker, title: p.title || card.title, meta: p.subtitle || card.meta }
+  })
   const [phase, setPhase] = useState<Phase>('idle')
   const [revealedChars, setRevealedChars] = useState(0)
   const [approved, setApproved] = useState<Record<string, boolean>>({})
@@ -254,7 +261,7 @@ export default function AfterScreen({ onViewLead, onOpenChat, onOpenDashboard }:
                 exit={{ opacity: 0 }}
                 className="w-full max-w-4xl mt-4 grid grid-cols-1 md:grid-cols-3 gap-3"
               >
-                {CARDS.map((c) => (
+                {cards.map((c) => (
                   <ActionCard
                     key={c.id}
                     icon={c.icon}

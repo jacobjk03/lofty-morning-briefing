@@ -134,8 +134,10 @@ export default function AIAssistant() {
                     exit={{ opacity: 0 }}
                     className="flex items-center gap-3"
                   >
-                    <div className="w-7 h-7 rounded-pill flex items-center justify-center shrink-0"
-                         style={{ background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)' }}>
+                    <div className="w-7 h-7 rounded-pill flex items-center justify-center"
+                         style={{
+                           background: 'radial-gradient(circle at 30% 25%, #67E8F9, #2563EB 65%, #0B1220 100%)',
+                         }}>
                       <SparkleIcon size={12} weight="fill" className="text-white/90" />
                     </div>
                     <div className="bg-white border border-ink-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
